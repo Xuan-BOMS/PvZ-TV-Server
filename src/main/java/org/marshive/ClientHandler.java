@@ -235,7 +235,18 @@ public class ClientHandler {
     }
 
     void close() {
+        close("connection closed");
+    }
+
+    void close(String reason) {
         if (closed) return;
+        Room room = currentRoom;
+        String role = isHost ? "host" : isSpectator ? "spectator"
+                : room != null && room.reconnect.candidate == this ? "reconnecting" : room != null ? "guest" : "lobby";
+        System.out.println("[DISCONNECT][shard=" + shardId + "][room=" + (room == null ? 0 : room.getId())
+                + "][role=" + role + "] reason=" + reason + " queuedBytes=" + retainedWriteBytes
+                + " queuedBuffers=" + writeQ.size() + " idleMs=" + (System.currentTimeMillis() - lastActiveAtMillis)
+                + " reconnectState=" + (room == null ? RelayReconnect.NONE : room.reconnect.state));
         closed = true;
         for (ByteBuffer b; (b = writeQ.poll()) != null;) WRITE_BUDGET.release(b.capacity());
         retainedWriteBytes = 0;
@@ -289,7 +300,7 @@ public class ClientHandler {
             AnalyticsCollector.onRelayPayload(room.getId(), raw);
         }
         if (room == null || room.getProtocolVersion() < 3214) {
-            relayPeer.enqueueRaw(raw);
+            if (!forwardRelayPayload(raw)) return;
             appendSpectatorRelayBytes(raw);
             for (byte[] event : drainSpectatorRelayEvents()) mirrorRelayEventToSpectators(event);
             return;
@@ -315,10 +326,28 @@ public class ClientHandler {
                 if (type == 240 || !isHost) continue;
                 mirrorRelayEventToSpectators(event);
             } else {
-                if (relayPeer != null && !relayPeer.closed) relayPeer.enqueueRaw(event);
+                if (!forwardRelayPayload(event)) return;
                 mirrorRelayEventToSpectators(event);
             }
         }
+    }
+
+    private boolean forwardRelayPayload(byte[] raw) {
+        ClientHandler target = relayPeer;
+        if (target == null || target.closed) return !closed;
+        try {
+            target.enqueueRaw(raw);
+        } catch (IOException error) {
+            // This is the recipient's write queue. Throwing here would make
+            // the selector close the healthy sender and destroy its room.
+            target.close("relay recipient: " + error.getMessage());
+            if (!closed && (currentRoom == null || currentRoom.getProtocolVersion() < RelayReconnect.VERSION)) {
+                close("relay peer unavailable");
+            }
+        }
+        // Closing a host may also close this guest. If only the guest closed,
+        // keep mirroring the host's tail until its FROZEN barrier arrives.
+        return !closed;
     }
 
     private void mirrorRelayEventToSpectators(byte[] event) {
@@ -328,8 +357,8 @@ public class ClientHandler {
             if (s == null || s.closed || !s.spectatorStreamRequested || !s.spectatorRelayOpen) continue;
             try {
                 s.enqueueRaw(event);
-            } catch (IOException ignored) {
-                s.close();
+            } catch (IOException error) {
+                s.close("spectator relay: " + error.getMessage());
             }
         }
     }
@@ -387,6 +416,13 @@ public class ClientHandler {
             }
             if (!tryConsumeOneCommand()) break;
             processed++;
+            if (isRawRelayStreamOpen(currentRoom)) {
+                // GO is already queued. A periodic QUERY/duplicate reservation
+                // coalesced with the handshake must not produce framed replies
+                // after it. Clients wait for GO before sending raw game data.
+                readBuf.position(readBuf.limit());
+                break;
+            }
         }
     }
 
@@ -633,9 +669,9 @@ public class ClientHandler {
             if (RelayReconnect.intAt(event, 4) != r.epoch || RelayReconnect.intAt(event, 8) != r.transfer) return true;
             int value = RelayReconnect.intAt(event, 12);
             if (op == RelayReconnect.CANCEL && room.getHost() == this) {
-                close();
+                close("host cancelled reconnect");
             } else if (op == RelayReconnect.FROZEN && room.getHost() == this && r.state == RelayReconnect.FREEZING) {
-                if (value != 1) { close(); return true; }
+                if (value != 1) { close("host scene cannot reconnect"); return true; }
                 r.state = RelayReconnect.WAITING;
                 reconnectState(this, room, true);
                 reconnectViewers(room, RelayReconnect.control(RelayReconnect.STATE, r.state, r.epoch, r.transfer, -1));

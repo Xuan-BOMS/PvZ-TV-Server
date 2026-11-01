@@ -175,7 +175,7 @@ public class ServerApp {
                 } catch (IOException e) {
                     Object att = key.attachment();
                     if (att instanceof ClientHandler) {
-                        ((ClientHandler) att).close();
+                        ((ClientHandler) att).close(e.getMessage());
                     } else {
                         key.cancel();
                     }
@@ -189,7 +189,7 @@ public class ServerApp {
                 try {
                     h.onTick(now);
                 } catch (IOException e) {
-                    h.close();
+                    h.close(e.getMessage());
                 }
             }
             SettlementReplicator.onTick(now);

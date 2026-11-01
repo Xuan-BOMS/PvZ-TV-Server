@@ -204,6 +204,40 @@ public class LiveSpectateTest {
         assertArrayEquals(live, drain(guest, guestWire));
     }
 
+    private void reserveWithCoalescedCommands(int version, byte[] commands) throws Exception {
+        setup(version);
+        var wire = new TestChannel(); var spectator = handler(wire);
+        set(spectator, "currentRoom", room); set(spectator, "isSpectator", true);
+        room.addSpectator(spectator);
+        send(spectator, wire, commands);
+        var frames = ByteBuffer.wrap(drain(spectator, wire));
+        for (int type : new int[]{0x90, 0x85, 0x8b}) {
+            assertEquals(type, frames.get() & 255);
+            int size = Short.toUnsignedInt(frames.getShort());
+            frames.position(frames.position() + size);
+        }
+        assertFalse("lobby replies after RELAY_GO corrupt the raw stream", frames.hasRemaining());
+        assertArrayEquals(new byte[]{(byte) 240, 2}, drain(host, hostWire));
+        send(spectator, wire, new byte[]{2});
+        assertArrayEquals("a delayed lobby query must also be ignored", new byte[0], drain(spectator, wire));
+        byte[] live = {27, 5, 1, 0, 0};
+        send(host, hostWire, live);
+        assertArrayEquals(live, drain(spectator, wire));
+        assertArrayEquals(live, drain(guest, guestWire));
+    }
+
+    @Test public void reserveAndPeriodicQueryInOneReadCannotAppendLobbyFrameAfterGo() throws Exception {
+        reserveWithCoalescedCommands(3214, new byte[]{0x11, 1, 2});
+    }
+
+    @Test public void duplicateReserveAndQueryInOneReadCannotCorruptRawHandoff() throws Exception {
+        reserveWithCoalescedCommands(3214, new byte[]{0x11, 1, 0x11, 1, 2});
+    }
+
+    @Test public void reconnectEnabledSpectateCannotAppendLobbyFrameAfterGo() throws Exception {
+        reserveWithCoalescedCommands(RelayReconnect.VERSION, new byte[]{0x11, 1, 2});
+    }
+
     private static final class TestChannel extends SocketChannel {
         private final Socket socket = new Socket();
         int writeQuota = Integer.MAX_VALUE; final ByteArrayOutputStream output = new ByteArrayOutputStream();

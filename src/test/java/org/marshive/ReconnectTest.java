@@ -282,6 +282,101 @@ public class ReconnectTest {
         assertTrue(drain(late).length > 0);
     }
 
+    private void fillWriteQueue(ClientHandler target) throws Exception {
+        var enqueue = ClientHandler.class.getDeclaredMethod("enqueueRaw", byte[].class);
+        enqueue.setAccessible(true);
+        enqueue.invoke(target, (Object) new byte[1024 * 1024]);
+    }
+
+    private void checkInitialRelayHandoff(boolean hostReadyLast) throws Exception {
+        room.setRelayDataOpen(false);
+        set(host, "relayDataMode", false); set(guest, "relayDataMode", false);
+        set(viewer, "spectatorRelayOpen", false);
+        ClientHandler first = hostReadyLast ? guest : host;
+        ClientHandler last = hostReadyLast ? host : guest;
+        byte[] ready = ByteBuffer.allocate(5).put((byte) 0x0b).putInt(room.getRelayEpoch()).array();
+        send(first, Arrays.copyOfRange(ready, 0, 3));
+        send(first, Arrays.copyOfRange(ready, 3, ready.length));
+        assertFalse(room.isRelayDataOpen());
+        for (ClientHandler h : List.of(host, guest, viewer)) assertArrayEquals(new byte[0], drain(h));
+        send(last, ByteBuffer.allocate(6).put(ready).put((byte) 2).array());
+        byte[] go = ByteBuffer.allocate(7).put((byte) 0x8b).putShort((short) 4).putInt(room.getRelayEpoch()).array();
+        for (ClientHandler h : List.of(host, guest, viewer)) assertArrayEquals(go, drain(h));
+        assertTrue(room.isRelayDataOpen()); assertEquals(NONE, room.reconnect.state);
+
+        byte[] actions = {27, 5, 1, 0, 0, 27, 5, 2, 0, 0};
+        send(host, Arrays.copyOfRange(actions, 0, 3));
+        assertArrayEquals(new byte[0], drain(guest)); assertArrayEquals(new byte[0], drain(viewer));
+        send(host, Arrays.copyOfRange(actions, 3, actions.length));
+        assertArrayEquals(actions, drain(guest)); assertArrayEquals(actions, drain(viewer));
+        byte[] reply = {27, 5, 3, 0, 0};
+        for (byte value : reply) send(guest, value);
+        assertArrayEquals(reply, drain(host)); assertArrayEquals(reply, drain(viewer));
+        for (ClientHandler h : List.of(host, guest, viewer)) assertFalse(h.isClosed());
+    }
+
+    @Test public void normalGameStartsWhenHostIsReadyLastWithoutMixingLobbyReplies() throws Exception {
+        checkInitialRelayHandoff(true);
+    }
+
+    @Test public void normalGameStartsWhenGuestIsReadyLastWithoutMixingLobbyReplies() throws Exception {
+        checkInitialRelayHandoff(false);
+    }
+
+    private void receiveLikeSelector(ClientHandler source, byte[] events) throws Exception {
+        try { send(source, events); }
+        catch (IOException error) { source.close(); }
+    }
+
+    @Test public void fullGuestWriteQueueMustNotCloseHealthyHostOrLoseViewerTail() throws Exception {
+        fillWriteQueue(guest);
+        byte[] tail = {27, 5, 1, 0, 0, 27, 5, 2, 0, 0};
+        receiveLikeSelector(host, tail);
+        assertFalse("recipient overflow must not close the sender", host.isClosed());
+        assertTrue(guest.isClosed()); assertFalse(viewer.isClosed());
+        assertSame(room, rooms.getRoom(room.getId()));
+        assertEquals(FREEZING, room.reconnect.state);
+        assertArrayEquals(tail, drain(viewer));
+        assertEquals(STATE, drain(host)[2]);
+        send(host, ctl(FROZEN, 1)); drain(host); drain(viewer);
+        finishReconnect(attach());
+    }
+
+    @Test public void fullHostWriteQueueClosesRoomWithoutLeakingItsGuest() throws Exception {
+        fillWriteQueue(host);
+        receiveLikeSelector(guest, new byte[]{27, 5, 1, 0, 0});
+        assertRoomClosed(null); assertTrue(guest.isClosed());
+    }
+
+    @Test public void fullViewerWriteQueueDoesNotDisconnectEitherPlayer() throws Exception {
+        fillWriteQueue(viewer);
+        byte[] event = {27, 5, 1, 0, 0};
+        receiveLikeSelector(host, event);
+        assertFalse(host.isClosed()); assertFalse(guest.isClosed());
+        assertTrue(viewer.isClosed()); assertEquals(NONE, room.reconnect.state);
+        assertArrayEquals(event, drain(guest));
+    }
+
+    @Test public void fullCandidateWriteQueueReturnsToWaitingAndAllowsRetry() throws Exception {
+        waitForReconnect(); var next = attach(); fillWriteQueue(next);
+        receiveLikeSelector(host, begin(new byte[]{1}));
+        assertFalse(host.isClosed()); assertFalse(viewer.isClosed());
+        assertTrue(next.isClosed()); assertEquals(WAITING, room.reconnect.state);
+        drain(host); finishReconnect(attach());
+    }
+
+    @Test public void readyAndCoalescedQueryCannotAppendLobbyReplyAfterReconnectGo() throws Exception {
+        waitForReconnect(); var next = client();
+        send(next, joinRequest(room.reconnect.code)); drain(next); drain(host);
+        byte[] readyAndQuery = ByteBuffer.allocate(10).put((byte) 0x13)
+                .putInt(room.reconnect.epoch).putInt(room.reconnect.transfer).put((byte) 2).array();
+        send(next, readyAndQuery);
+        byte[] response = drain(next);
+        assertEquals(11, response.length); assertEquals(0x92, response[0] & 255);
+        assertEquals(SYNC, drain(host)[2]);
+        finishReconnect(next);
+    }
+
     private static final class TestChannel extends SocketChannel {
         private final Socket socket = new Socket();
         int writeQuota = Integer.MAX_VALUE; final ByteArrayOutputStream output = new ByteArrayOutputStream();
