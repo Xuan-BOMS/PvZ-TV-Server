@@ -140,10 +140,10 @@ public class ServerIntegrationTest {
     }
 
     private void verifyExtendedCardStatistics(int base) throws Exception {
-        // Without external language files, the existing loader falls back to English keys.
+        // Bundled game strings provide localized names without external files.
         String names = httpGet(base + 4000, "/api/seed-names");
-        assertTrue(names.contains("\"seed_type\":209,\"en\":\"ENDURIAN\",\"zh\":\"ENDURIAN\""));
-        assertTrue(names.contains("\"seed_type\":102,\"en\":\"CROSSING_GUARD_ZOMBIE\",\"zh\":\"CROSSING_GUARD_ZOMBIE\""));
+        assertTrue(names.contains("\"seed_type\":209,\"en\":\"ENDURIAN\",\"zh\":\"榴莲\""));
+        assertTrue(names.contains("\"seed_type\":102,\"en\":\"CROSSING_GUARD_ZOMBIE\",\"zh\":\"交通协管僵尸\""));
         for (int excluded : new int[]{106, 107, 108, 109, 110, 111, 112, 211, 212}) {
             assertFalse(names.contains("\"seed_type\":" + excluded + ","));
         }

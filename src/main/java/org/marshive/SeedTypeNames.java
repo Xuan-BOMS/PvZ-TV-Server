@@ -3,6 +3,7 @@ package org.marshive;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -136,6 +137,8 @@ final class SeedTypeNames {
         put(210, "RED_STINGER");
         // Stop before EXTENDED_NUM_SEEDS_IN_CHOOSER; hidden plants are excluded.
 
+        loadLocalizedResource("/LawnStrings.txt");
+        loadLocalizedResource("/AddonStrings.txt");
         loadLocalizedStrings("LawnStrings.txt");
         loadLocalizedStrings("AddonStrings.txt");
         loadLocalizedStrings("target" + File.separator + "LawnStrings.txt");
@@ -192,28 +195,44 @@ final class SeedTypeNames {
         }
     }
 
-    private static boolean tryLoad(File f, String charset) {
-        int before = ZH.size();
-        Set<String> touched = new LinkedHashSet<>();
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(f), charset))) {
-            String currentKey = null;
-            String line;
-            while ((line = br.readLine()) != null) {
-                String t = line.trim();
-                if (t.isEmpty()) continue;
-                if (t.startsWith("[") && t.endsWith("]") && t.length() > 2) {
-                    currentKey = t.substring(1, t.length() - 1).trim();
-                    continue;
-                }
-                if (currentKey != null && !t.startsWith("[") && !t.endsWith("]")) {
-                    ZH.put(currentKey, t);
-                    touched.add(currentKey);
-                    currentKey = null;
+    private static void loadLocalizedResource(String path) {
+        try (InputStream input = SeedTypeNames.class.getResourceAsStream(path)) {
+            if (input == null) return;
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
+                if (tryLoad(br)) {
+                    System.out.println("[SEED_I18N] loaded from classpath " + path);
                 }
             }
-            return ZH.size() > before;
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static boolean tryLoad(File f, String charset) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(f), charset))) {
+            return tryLoad(br);
         } catch (Exception ignored) {
             return false;
         }
+    }
+
+    private static boolean tryLoad(BufferedReader br) throws Exception {
+        Set<String> touched = new LinkedHashSet<>();
+        String currentKey = null;
+        String line;
+        while ((line = br.readLine()) != null) {
+            String t = line.trim();
+            if (t.startsWith("\uFEFF")) t = t.substring(1);
+            if (t.isEmpty()) continue;
+            if (t.startsWith("[") && t.endsWith("]") && t.length() > 2) {
+                currentKey = t.substring(1, t.length() - 1).trim();
+                continue;
+            }
+            if (currentKey != null && !t.startsWith("[") && !t.endsWith("]")) {
+                ZH.put(currentKey, t);
+                touched.add(currentKey);
+                currentKey = null;
+            }
+        }
+        return !touched.isEmpty();
     }
 }
