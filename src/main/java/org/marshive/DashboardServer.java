@@ -38,7 +38,8 @@ final class DashboardServer {
         defaultProperty("sun.net.httpserver.maxRspTime", "30");
         defaultProperty("sun.net.httpserver.maxReqHeaders", "64");
         defaultProperty("sun.net.httpserver.maxReqHeaderSize", "16384");
-        HttpServer server = HttpServer.create(new InetSocketAddress(port), 64);
+        String bindAddress = System.getProperty("pvz.dashboard.bindAddress", "0.0.0.0");
+        HttpServer server = HttpServer.create(new InetSocketAddress(bindAddress, port), 64);
         server.createContext("/atlas/", new AtlasHandler());
         server.createContext("/", new IndexHandler());
         server.createContext("/api/top-decks", new TopDecksHandler());
