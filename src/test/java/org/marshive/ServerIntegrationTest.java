@@ -234,16 +234,16 @@ public class ServerIntegrationTest {
         assertTrue(html.contains("id='extraSel'"));
         assertTrue(html.contains("id='banSel'"));
         assertTrue(html.contains("id='modeSel'"));
-        assertTrue(html.contains("src='/atlas/'"));
+        assertTrue(html.contains("src='/almanac/'"));
         assertFalse(html.contains("gameModeSel"));
         assertFalse(html.contains("game_mode"));
         assertFalse(html.contains("bpSel"));
         assertFalse(html.contains("balance_patch"));
-        String atlas = httpGet(base + 4000, "/atlas/");
-        assertTrue(atlas.contains("<title>植物图鉴 · PvZ TV</title>"));
-        assertTrue(atlas.contains("V3215"));
-        assertTrue(atlas.contains("window.PVZ_IMAGE_DATA"));
-        assertFalse(atlas.contains("github.io"));
+        String almanac = httpGet(base + 4000, "/almanac/");
+        assertTrue(almanac.contains("<title>植物图鉴 · PvZ TV</title>"));
+        assertTrue(almanac.contains("V3215"));
+        assertTrue(almanac.contains("window.PVZ_IMAGE_DATA"));
+        assertFalse(almanac.contains("github.io"));
         Files.writeString(directory.resolve("dashboard.html"), html);
         Files.writeString(directory.resolve("dashboard.js"), html.substring(html.indexOf("<script>") + 8, html.indexOf("</script>")));
     }
