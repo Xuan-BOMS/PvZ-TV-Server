@@ -38,6 +38,10 @@ public class SensitiveWordFilterTest {
         assertTrue(filter.wordCount() > 100);
         assertEquals("[VS] **房间", filter.mask("[VS] Ｑｑ房间"));
         assertEquals("***房", filter.mask("制作组房"));
+        assertEquals("[VS]****", filter.mask("[VS]ＤｉＣｋ"));
+        assertEquals("**** **** ***** ***", filter.mask("ShIt FUCK PuSsY ass"));
+        assertEquals("***** ******", filter.mask("NiGgA NIGGER"));
+        assertEquals("******* ************", filter.mask("ASSHOLE motherfucker"));
         assertNotNull(SensitiveWordFilter.class.getResource("/sensitive_words/LICENSE"));
     }
 
