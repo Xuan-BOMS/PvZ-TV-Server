@@ -391,13 +391,13 @@ h1 {
 }
 .detail-headline-stats b { color: var(--leaf-dark); font-size: 14px; font-weight: 800; text-align: right; }
 
-.stat-section, .ability-section {
+.stat-section, .ability-section, .mechanism-section {
   padding: 10px 11px;
   border: 2px solid #9a7047;
   border-radius: 5px;
   background: rgba(255, 238, 198, .78);
 }
-.stat-section h3, .ability-section h3 { margin: 0 0 7px; color: #744321; font: 700 15px/1.2 Georgia, "Microsoft YaHei", serif; }
+.stat-section h3, .ability-section h3, .mechanism-section h3 { margin: 0 0 7px; color: #744321; font: 700 15px/1.2 Georgia, "Microsoft YaHei", serif; }
 .stat-list { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0 13px; }
 body[data-category="zombies"] .stat-section { padding-left: 6px; padding-right: 6px; }
 body[data-category="zombies"] .stat-list { column-gap: 8px; }
@@ -460,7 +460,7 @@ body[data-category="zombies"] .almanac-card.is-selected { border-color: #d58c20;
 body[data-category="zombies"] .detail-headline-stats b,
 body[data-category="zombies"] .stat-row dd,
 body[data-category="zombies"] .attack-line { color: #317f36; }
-body[data-category="zombies"] .stat-section, body[data-category="zombies"] .ability-section { border-color: #8884a5; background: rgba(239,233,246,.88); }
+body[data-category="zombies"] .stat-section, body[data-category="zombies"] .ability-section, body[data-category="zombies"] .mechanism-section { border-color: #8884a5; background: rgba(239,233,246,.88); }
 
 @media (max-width: 900px) {
   .page-shell { padding: 12px 13px 10px; gap: 10px; }
@@ -535,8 +535,8 @@ body[data-category="zombies"] .stat-section, body[data-category="zombies"] .abil
   .detail-hero { grid-template-columns: 96px minmax(0, 1fr); gap: 10px; }
   .detail-headline-stats { gap: 3px; }
   .detail-headline-stats p { padding: 4px 5px; font-size: 12px; }
-  .stat-section, .ability-section { padding: 8px 9px; }
-  .stat-section h3, .ability-section h3 { font-size: 14px; }
+  .stat-section, .ability-section, .mechanism-section { padding: 8px 9px; }
+  .stat-section h3, .ability-section h3, .mechanism-section h3 { font-size: 14px; }
   .stat-list { grid-template-columns: 1fr; }
   .stat-row { min-height: 32px; font-size: 12px; }
   .ability-copy { font-size: 13px; }
@@ -582,8 +582,8 @@ body[data-category="zombies"] .stat-section, body[data-category="zombies"] .abil
   .detail-hero { grid-template-columns: 70px minmax(0, 1fr); gap: 6px; padding: 4px; }
   .detail-headline-stats p { padding: 3px 4px; font-size: 12px; }
   .detail-headline-stats b { font-size: 12px; }
-  .stat-section, .ability-section { padding: 5px 6px; }
-  .stat-section h3, .ability-section h3 { margin-bottom: 4px; font-size: 12px; }
+  .stat-section, .ability-section, .mechanism-section { padding: 5px 6px; }
+  .stat-section h3, .ability-section h3, .mechanism-section h3 { margin-bottom: 4px; font-size: 12px; }
   .stat-list { grid-template-columns: 1fr; }
   .stat-row { min-height: 28px; font-size: 12px; }
   .attack-line, .ability-copy { font-size: 12px; }
@@ -648,6 +648,7 @@ body[data-category="zombies"] .stat-section, body[data-category="zombies"] .abil
               <p><span id="detail-cost-label">阳光花费</span><b id="detail-cost-value">75</b></p>
               <p><span>恢复时间</span><b id="detail-recharge">7.5 秒</b></p>
               <p><span>死斗恢复</span><b id="detail-sudden-death-recharge">2.5 秒</b></p>
+              <p><span>开局 CD</span><b id="detail-opening-recharge">10 秒</b></p>
             </div>
           </div>
           <div id="variant-list" class="variant-list" hidden></div>
@@ -659,6 +660,10 @@ body[data-category="zombies"] .stat-section, body[data-category="zombies"] .abil
             <h3 id="ability-title">描述</h3>
             <p id="detail-attack" class="attack-line"></p>
             <p id="detail-ability" class="ability-copy"></p>
+          </section>
+          <section id="mechanism-section" class="mechanism-section" aria-labelledby="mechanism-title" hidden>
+            <h3 id="mechanism-title">特殊机制</h3>
+            <p id="detail-mechanism" class="ability-copy"></p>
           </section>
         </aside>
       </main>
@@ -672,54 +677,54 @@ body[data-category="zombies"] .stat-section, body[data-category="zombies"] .abil
   <script>
 window.PVZ_CATALOG = {
   plants: [
-    { id: 0, name: "豌豆射手", en: "PEASHOOTER", sun: 100, health: "300", damage: "20 / 发", attackInterval: "1.5 秒", recharge: "7.5 秒", role: "攻击", attack: "向前发射豌豆", ability: "基础直线攻击。" },
+    { id: 0, name: "豌豆射手", en: "PEASHOOTER", sun: 100, health: "300", damage: "20 / 发", attackInterval: "1.36–1.5 秒", recharge: "7.5 秒", role: "攻击", attack: "向前发射豌豆", ability: "基础直线攻击。" },
     { id: 1, name: "向日葵", en: "SUNFLOWER", sun: 50, health: "300", damage: "无直接伤害", attackInterval: "约 25 秒产阳", recharge: "7.5 秒", role: "生产", attack: "生产阳光", ability: "每次产出 25 阳光。" },
     { id: 2, name: "樱桃炸弹", en: "CHERRY_BOMB", sun: 150, health: "300", damage: "1800", singleDamage: 1800, attackInterval: "一次性", recharge: "60 秒", role: "灰烬", attack: "落地后爆炸", ability: "一次性范围攻击。" },
     { id: 3, name: "坚果", en: "WALL_NUT", sun: 50, health: "4000", damage: "无直接伤害", attackInterval: "—", recharge: "30 秒", role: "防御", attack: "阻挡并承受攻击", ability: "高耐久防线。" },
     { id: 4, name: "土豆地雷", en: "POTATO_MINE", sun: 25, health: "300", damage: "1800", singleDamage: 1800, attackInterval: "布置后启动", recharge: "30 秒", role: "灰烬", attack: "踩中后爆炸", ability: "需要时间完成布置。" },
-    { id: 5, name: "寒冰射手", en: "SNOW_PEA", sun: 175, health: "300", damage: "20 / 发", attackInterval: "1.5 秒", recharge: "7.5 秒", role: "攻击", attack: "豌豆伤害并减速", ability: "冰冻效果不增加单发基础伤害。" },
+    { id: 5, name: "寒冰射手", en: "SNOW_PEA", sun: 175, health: "300", damage: "20 / 发", attackInterval: "1.36–1.5 秒", recharge: "7.5 秒", role: "攻击", attack: "豌豆伤害并减速", ability: "冰冻效果不增加单发基础伤害。" },
     { id: 6, name: "大嘴花", en: "CHOMPER", sun: 150, health: "300", damage: "吞噬", attackInterval: "吞噬后咀嚼", recharge: "7.5 秒", role: "近战", attack: "尝试吞噬近身目标", ability: "巨人、Boss 和小型尸莱姆只受 40 点伤害；跳跃中的撑杆、蹦蹦僵尸可能躲过攻击。吞噬后需要咀嚼恢复。" },
-    { id: 7, name: "双重射手", en: "REPEATER", sun: 200, health: "300", damage: "2 × 20 / 轮", attackInterval: "1.5 秒", recharge: "7.5 秒", role: "攻击", attack: "连续发射两颗豌豆", ability: "每轮两次基础伤害。" },
-    { id: 8, name: "小喷菇", en: "PUFF_SHROOM", sun: 0, health: "300", damage: "20 / 发", attackInterval: "1.5 秒", recharge: "7.5 秒", role: "攻击", attack: "近距离喷射孢子", ability: "攻击距离较短。" },
+    { id: 7, name: "双重射手", en: "REPEATER", sun: 200, health: "300", damage: "2 × 20 / 轮", attackInterval: "1.36–1.5 秒", recharge: "7.5 秒", role: "攻击", attack: "连续发射两颗豌豆", ability: "每轮两次基础伤害。" },
+    { id: 8, name: "小喷菇", en: "PUFF_SHROOM", sun: 0, health: "300", damage: "20 / 发", attackInterval: "1.36–1.5 秒", recharge: "7.5 秒", role: "攻击", attack: "近距离喷射孢子", ability: "攻击距离较短。" },
     { id: 9, name: "阳光菇", en: "SUN_SHROOM", sun: 25, health: "300", damage: "无直接伤害", attackInterval: "约 25 秒产阳", recharge: "7.5 秒", role: "生产", attack: "生产阳光", ability: "成长后产出普通阳光。" },
-    { id: 10, name: "大喷菇", en: "FUME_SHROOM", sun: 75, health: "300", damage: "20 / 次", attackInterval: "1.5 秒", recharge: "7.5 秒", role: "攻击", attack: "烟雾贯穿本行目标", ability: "攻击范围内本行所有目标都会受伤，无固定命中数上限；烟雾可穿过护具。" },
+    { id: 10, name: "大喷菇", en: "FUME_SHROOM", sun: 75, health: "300", damage: "20 / 次", attackInterval: "1.36–1.5 秒", recharge: "7.5 秒", role: "攻击", attack: "烟雾贯穿本行目标", ability: "攻击范围内本行所有目标都会受伤，无固定命中数上限；烟雾可穿过护具。" },
     { id: 11, name: "咬咬碑", en: "GRAVE_BUSTER", sun: 75, health: "300", damage: "不攻击僵尸", attackInterval: "—", recharge: "7.5 秒", role: "功能", attack: "清除墓碑", ability: "需要种在墓碑上。" },
     { id: 12, name: "迷惑菇", en: "HYPNO_SHROOM", sun: 75, health: "300", damage: "控制效果", attackInterval: "被吃后触发", recharge: "30 秒", role: "控制", attack: "使啃食它的僵尸倒戈", ability: "不造成常规投射物伤害。" },
-    { id: 13, name: "胆小菇", en: "SCAREDY_SHROOM", sun: 25, health: "300", damage: "20 / 发", attackInterval: "1.5 秒", recharge: "7.5 秒", role: "攻击", attack: "远距离喷射孢子", ability: "僵尸靠近时会躲藏。" },
+    { id: 13, name: "胆小菇", en: "SCAREDY_SHROOM", sun: 25, health: "300", damage: "20 / 发", attackInterval: "1.36–1.5 秒", recharge: "7.5 秒", role: "攻击", attack: "远距离喷射孢子", ability: "僵尸靠近时会躲藏。" },
     { id: 14, name: "冰川菇", en: "ICE_SHROOM", sun: 75, health: "300", damage: "20", singleDamage: 20, attackInterval: "一次性", recharge: "50 秒", role: "控制", attack: "冻结场上僵尸", ability: "以全场控制为主。" },
     { id: 15, name: "末日菇", en: "DOOM_SHROOM", sun: 125, health: "300", damage: "1800", singleDamage: 1800, attackInterval: "一次性", recharge: "50 秒", role: "灰烬", attack: "爆炸并留下弹坑", ability: "弹坑会暂时阻止再次种植。" },
     { id: 16, name: "莲叶", en: "LILY_PAD", sun: 25, health: "300", damage: "无直接伤害", attackInterval: "—", recharge: "7.5 秒", role: "平台", attack: "提供水面种植位置", ability: "可在其上种植其他植物。" },
     { id: 17, name: "窝瓜", en: "SQUASH", sun: 50, health: "300", damage: "1800", singleDamage: 1800, attackInterval: "触发后一次", recharge: "30 秒", role: "爆发", attack: "跳起砸向近处目标", ability: "对目标造成高额单次伤害。" },
-    { id: 18, name: "三重射手", en: "THREEPEATER", sun: 325, health: "300", damage: "20 / 豌豆", attackInterval: "1.5 秒", recharge: "7.5 秒", role: "攻击", attack: "同时攻击本行及相邻行", ability: "最多覆盖三行。" },
+    { id: 18, name: "三重射手", en: "THREEPEATER", sun: 325, health: "300", damage: "20 / 豌豆", attackInterval: "1.36–1.5 秒", recharge: "7.5 秒", role: "攻击", attack: "同时攻击本行及相邻行", ability: "最多覆盖三行。" },
     { id: 19, name: "缠绕水草", en: "TANGLE_KELP", sun: 25, health: "300", damage: "拖入水中", attackInterval: "触发后一次", recharge: "30 秒", role: "水域", attack: "缠住并拖走接触目标", ability: "只能种在水面。" },
     { id: 20, name: "火爆辣椒", en: "JALAPENO", sun: 125, health: "300", damage: "1800", singleDamage: 1800, attackInterval: "一次性", recharge: "50 秒", role: "灰烬", attack: "清理一整行", ability: "消除该行冰道。" },
     { id: 21, name: "地刺", en: "SPIKEWEED", sun: 100, health: "300", damage: "20 / 次", attackInterval: "约 1 秒 / 轮", recharge: "7.5 秒", role: "陷阱", attack: "接触目标后周期性扎刺", ability: "攻击范围内所有地面目标都会同时受伤，无固定命中数上限；不会被普通啃食攻击伤害。" },
     { id: 22, name: "火炬树桩", en: "TORCHWOOD", sun: 125, health: "300", damage: "强化豌豆", attackInterval: "—", recharge: "7.5 秒", role: "辅助", attack: "改变穿过的豌豆", ability: "把普通豌豆强化为火焰攻击。" },
     { id: 23, name: "高坚果", en: "TALL_NUT", sun: 125, health: "8000", damage: "无直接伤害", attackInterval: "—", recharge: "30 秒", role: "防御", attack: "阻挡并承受攻击", ability: "高耐久，能阻挡跳跃型僵尸。" },
-    { id: 24, name: "水兵菇", en: "SEA_SHROOM", sun: 0, health: "300", damage: "20 / 发", attackInterval: "1.5 秒", recharge: "30 秒", role: "水域攻击", attack: "在水面喷射孢子", ability: "只能种在水面。" },
-    { id: 26, name: "仙人掌", en: "CACTUS", sun: 125, health: "300", damage: "30 / 15 / 10 / 刺", attackInterval: "1.5 秒", recharge: "7.5 秒", role: "攻击", attack: "发射尖刺", ability: "每枚尖刺最多命中 3 个目标，伤害依次为 30、15、10；可攻击空中目标。" },
+    { id: 24, name: "水兵菇", en: "SEA_SHROOM", sun: 0, health: "300", damage: "20 / 发", attackInterval: "1.36–1.5 秒", recharge: "30 秒", role: "水域攻击", attack: "在水面喷射孢子", ability: "只能种在水面。" },
+    { id: 26, name: "仙人掌", en: "CACTUS", sun: 125, health: "300", damage: "30 / 15 / 10 / 刺", attackInterval: "1.36–1.5 秒", recharge: "7.5 秒", role: "攻击", attack: "发射尖刺", ability: "每枚尖刺最多命中 3 个目标，伤害依次为 30、15、10；可攻击空中目标。" },
     { id: 27, name: "三叶草", en: "BLOVER", sun: 100, health: "300", damage: "吹走气球僵尸", attackInterval: "一次性", recharge: "7.5 秒", role: "控制", attack: "吹散飞行僵尸", ability: "即时效果，不造成常规伤害。" },
-    { id: 28, name: "双向射手", en: "SPLIT_PEA", sun: 125, health: "300", damage: "20 / 豌豆", attackInterval: "1.5 秒", recharge: "7.5 秒", role: "攻击", attack: "同时向前、向后射击", ability: "适合应对身后的矿工僵尸。" },
-    { id: 29, name: "星星果", en: "STARFRUIT", sun: 125, health: "300", damage: "20 / 星", attackInterval: "1.5 秒", recharge: "7.5 秒", role: "攻击", attack: "向五个方向发射星星", ability: "可覆盖多个方向。" },
+    { id: 28, name: "双向射手", en: "SPLIT_PEA", sun: 125, health: "300", damage: "20 / 豌豆", attackInterval: "1.36–1.5 秒", recharge: "7.5 秒", role: "攻击", attack: "同时向前、向后射击", ability: "适合应对身后的矿工僵尸。" },
+    { id: 29, name: "星星果", en: "STARFRUIT", sun: 125, health: "300", damage: "20 / 星", attackInterval: "1.36–1.5 秒", recharge: "7.5 秒", role: "攻击", attack: "向五个方向发射星星", ability: "可覆盖多个方向。" },
     { id: 30, name: "南瓜头", en: "PUMPKIN", sun: 125, health: "4000", damage: "无直接伤害", attackInterval: "—", recharge: "30 秒", role: "防御", attack: "保护下方植物", ability: "可套在其他植物外侧。" },
     { id: 31, name: "磁力菇", en: "MAGNET_SHROOM", sun: 100, health: "300", damage: "解除金属护具", attackInterval: "按目标触发", recharge: "7.5 秒", role: "辅助", attack: "吸走金属物品", ability: "能处理铁桶、梯子等金属装备。" },
-    { id: 32, name: "卷心菜投手", en: "CABBAGE_PULT", sun: 100, health: "300", damage: "40 / 投掷", attackInterval: "3 秒", recharge: "7.5 秒", role: "攻击", attack: "抛掷卷心菜", ability: "越过前方植物攻击目标。" },
-    { id: 34, name: "玉米投手", en: "KERNEL_PULT", sun: 100, health: "300", damage: "20 / 玉米；40 / 黄油（25%）", attackInterval: "3 秒 / 轮", recharge: "7.5 秒", role: "攻击", attack: "抛掷玉米或黄油", ability: "黄油命中时可短暂定住目标。" },
+    { id: 32, name: "卷心菜投手", en: "CABBAGE_PULT", sun: 100, health: "300", damage: "40 / 投掷", attackInterval: "2.86–3 秒", recharge: "7.5 秒", role: "攻击", attack: "抛掷卷心菜", ability: "越过前方植物攻击目标。" },
+    { id: 34, name: "玉米投手", en: "KERNEL_PULT", sun: 100, health: "300", damage: "20 / 玉米；40 / 黄油（25%）", attackInterval: "2.86–3 秒 / 轮", recharge: "7.5 秒", role: "攻击", attack: "抛掷玉米或黄油", ability: "黄油命中时可短暂定住目标。" },
     { id: 35, name: "咖啡豆", en: "COFFEE_BEAN", sun: 25, health: "300", damage: "唤醒蘑菇", attackInterval: "一次性", recharge: "7.5 秒", role: "辅助", attack: "唤醒沉睡的蘑菇", ability: "需要种在蘑菇上。" },
     { id: 36, name: "大蒜", en: "GARLIC", sun: 50, health: "400", damage: "无直接伤害", attackInterval: "—", recharge: "7.5 秒", role: "防御", attack: "改变僵尸行进路线", ability: "僵尸开始啃食时会停下，并尝试改走相邻行。" },
     { id: 37, name: "叶子保护伞", en: "UMBRELLA_LEAF", sun: 100, health: "300", damage: "弹开飞来物", attackInterval: "受攻击触发", recharge: "7.5 秒", role: "防护", attack: "保护邻近植物", ability: "可弹开蹦极僵尸和投掷物。" },
-    { id: 39, name: "西瓜投手", en: "MELON_PULT", sun: 300, health: "300", damage: "80 / 投掷", attackInterval: "3 秒", recharge: "7.5 秒", role: "攻击", attack: "抛掷西瓜并造成范围伤害", ability: "可同时伤害邻近目标。" },
+    { id: 39, name: "西瓜投手", en: "MELON_PULT", sun: 300, health: "300", damage: "80 / 投掷", attackInterval: "2.86–3 秒", recharge: "7.5 秒", role: "攻击", attack: "抛掷西瓜并造成范围伤害", ability: "可同时伤害邻近目标。" },
     { id: 200, name: "冰冻生菜", en: "ICEBERG_LETTUCE", sun: 0, health: "300", damage: "冻结单个目标", attackInterval: "触发后一次", recharge: "30 秒", role: "控制", attack: "锁定并冻结本行索敌目标", ability: "索敌后短暂延迟生效。" },
-    { id: 201, name: "回旋镖射手", en: "BLOOMERANG", sun: 175, health: "300", damage: "20 / 次；去回程各命中一次", attackInterval: "3 秒 / 轮", recharge: "7.5 秒", role: "攻击", attack: "投出往返回旋镖", ability: "每轮最多锁定 3 个目标；同一目标去程、回程各受 20 点伤害，DPS 计入两次命中。" },
+    { id: 201, name: "回旋镖射手", en: "BLOOMERANG", sun: 175, health: "300", damage: "20 / 次；去回程各命中一次", attackInterval: "2.86–3 秒 / 轮", recharge: "7.5 秒", role: "攻击", attack: "投出往返回旋镖", ability: "每轮最多锁定 3 个目标；同一目标去程、回程各受 20 点伤害，DPS 计入两次命中。" },
     { id: 202, name: "菜问", en: "BONK_CHOY", sun: 150, health: "300", damage: "15 / 拳；35 / 上勾拳", attackInterval: "0.4 秒", recharge: "7.5 秒", role: "近战", attack: "快速攻击前后近身目标", ability: "可连续拳击并对残血目标上勾拳。" },
     { id: 203, name: "潜伏芹菜", en: "CELERY_STALKER", sun: 50, health: "1200", damage: "20 / 击", attackInterval: "0.5 秒", recharge: "30 秒", role: "近战", attack: "从后方刺击僵尸", ability: "靠近目标后起身攻击。" },
-    { id: 204, name: "孢子菇", en: "SPORE_SHROOM", sun: 125, health: "300", damage: "50 / 孢子", attackInterval: "3 秒", recharge: "7.5 秒", role: "攻击", attack: "抛掷孢子攻击单个目标", ability: "孢子命中后消失；普通僵尸被打掉头时，或不能掉头的特殊僵尸被击败时，会在目标所在格生成小喷菇。" },
+    { id: 204, name: "孢子菇", en: "SPORE_SHROOM", sun: 125, health: "300", damage: "50 / 孢子", attackInterval: "2.86–3 秒", recharge: "7.5 秒", role: "攻击", attack: "抛掷孢子攻击单个目标", ability: "孢子命中后消失；普通僵尸被打掉头时，或不能掉头的特殊僵尸被击败时，会在目标所在格生成小喷菇。" },
     { id: 205, name: "甜薯", en: "SWEET_POTATO", sun: 150, health: "4000", damage: "无直接伤害", attackInterval: "—", recharge: "30 秒", role: "防御", attack: "将相邻行僵尸拉入所在行", ability: "仅对进入前方格的可冻结步行僵尸生效，且不跨水陆行。" },
     { id: 206, name: "寒冰辣椒", en: "CHILLY_PEPPER", sun: 100, health: "300", damage: "整行冰冻", attackInterval: "一次性", recharge: "50 秒", role: "控制", attack: "冻结整行目标", ability: "兼具整行控制与清场效果。" },
     { id: 207, name: "阳光豆", en: "SUN_BEAN", sun: 50, health: "150", damage: "无直接伤害", attackInterval: "触发后生效", recharge: "30 秒", role: "经济", attack: "标记啃食它的僵尸", ability: "被标记僵尸死亡后提供额外阳光。" },
-    { id: 208, name: "花生射手", en: "PEANUT", sun: 150, health: "4000", damage: "20 / 豌豆", attackInterval: "2 秒", recharge: "30 秒", role: "攻击 / 防御", attack: "发射豌豆并承受攻击", ability: "兼具射击能力与坚果级耐久。" },
+    { id: 208, name: "花生射手", en: "PEANUT", sun: 150, health: "4000", damage: "2 × 20 / 轮", attackInterval: "1.86–2 秒 / 轮", recharge: "30 秒", role: "攻击 / 防御", attack: "发射豌豆并承受攻击", ability: "兼具射击能力与坚果级耐久。" },
     { id: 209, name: "榴莲", en: "ENDURIAN", sun: 75, health: "3000", damage: "15 / 次", attackInterval: "1 秒", recharge: "30 秒", role: "防御 / 反击", attack: "对范围内目标持续反击", ability: "主目标受到完整伤害，周围目标受到较低伤害。" },
-    { id: 210, name: "红针花", en: "RED_STINGER", sun: 150, health: "300 / 900 / 1500", damage: "20 × 2 / 轮（一形态）；30 / 轮（二形态）；三形态不主动攻击", attackInterval: "约 2.5 秒 / 轮", recharge: "7.5 秒", role: "攻击 / 防御", attack: "根据站位切换攻击形态", ability: "PVP 按所在列分形态：第 1–2 列双发，第 3–4 列单发，第 5 列起为防御形态。防御形态被啃食致死时向周围散射 12 枚花瓣。" }
+    { id: 210, name: "红针花", en: "RED_STINGER", sun: 150, health: "300 / 900 / 1500", damage: "20 × 2 / 轮（一形态）；30 / 轮（二形态）；三形态不主动攻击", attackInterval: "2.36–2.5 秒 / 轮", recharge: "7.5 秒", role: "攻击 / 防御", attack: "根据站位切换攻击形态", ability: "PVP 按所在列分形态：第 1–2 列双发，第 3–4 列单发，第 5 列起为防御形态。防御形态被啃食致死时向周围散射 12 枚花瓣。" }
   ],
   plantCosts: {
       0: 75, 1: 50, 2: 150, 3: 50, 4: 50, 5: 125, 6: 150, 7: 150, 8: 0, 9: 0, 10: 75, 11: 50,
@@ -752,29 +757,34 @@ window.PVZ_CATALOG = {
     93: 5, 94: 10, 95: 10, 96: 5, 97: 10, 98: 10, 99: 20, 100: 10,
     101: 10, 102: 10, 103: 10, 104: 10, 105: 10
   },
+  openingRechargeDefaults: { "7.5": 10, "15": 10, "30": 20, "60": 35 },
+  openingRechargeOverrides: {
+    plants: { 0: 0, 3: 0, 4: 0, 23: 0, 30: 0, 32: 0 },
+    zombies: { 63: 0, 64: 35, 72: 20, 78: 20, 98: 35 }
+  },
   dpsProfiles: {
-    0: { damage: 20, interval: 1.5 },
-    5: { damage: 20, interval: 1.5 },
-    7: { damage: 40, interval: 1.5 },
-    8: { damage: 20, interval: 1.5 },
-    10: { damage: 20, interval: 1.5 },
-    13: { damage: 20, interval: 1.5 },
-    18: { damage: 20, interval: 1.5 },
-    24: { damage: 20, interval: 1.5 },
-    26: { damage: 30, interval: 1.5 },
-    28: { damage: 20, interval: 1.5 },
-    29: { damage: 20, interval: 1.5 },
+    0: { damage: 20, interval: [1.36, 1.5] },
+    5: { damage: 20, interval: [1.36, 1.5] },
+    7: { damage: 40, interval: [1.36, 1.5] },
+    8: { damage: 20, interval: [1.36, 1.5] },
+    10: { damage: 20, interval: [1.36, 1.5] },
+    13: { damage: 20, interval: [1.36, 1.5] },
+    18: { damage: 20, interval: [1.36, 1.5] },
+    24: { damage: 20, interval: [1.36, 1.5] },
+    26: { damage: 30, interval: [1.36, 1.5] },
+    28: { damage: 20, interval: [1.36, 1.5] },
+    29: { damage: 20, interval: [1.36, 1.5] },
     21: { damage: 20, interval: 1 },
-    32: { damage: 40, interval: 3 },
-    34: { damage: 25, interval: 3, basis: "按25%黄油概率折算期望伤害" },
-    39: { damage: 80, interval: 3 },
-    201: { damage: 20, hitsPerTarget: 2, interval: 3 },
+    32: { damage: 40, interval: [2.86, 3] },
+    34: { damage: [20, 40], probabilities: [0.75, 0.25], interval: [2.86, 3] },
+    39: { damage: 80, interval: [2.86, 3] },
+    201: { damage: 20, hitsPerTarget: 2, interval: [2.86, 3] },
     202: { damage: 15, interval: 0.4, basis: "按普通拳计算，不含残血上勾拳" },
     203: { damage: 20, interval: 0.5 },
-    204: { damage: 50, interval: 3 },
-    208: { damage: 20, interval: 2 },
+    204: { damage: 50, interval: [2.86, 3] },
+    208: { damage: 40, interval: [1.86, 2] },
     209: { damage: 15, interval: 1 },
-    210: { damage: [0, 40], interval: 2.5, basis: "双发形态 16，单发形态 12，防御形态 0" }
+    210: { damage: 40, interval: [2.36, 2.5] }
   },
   zombies: [
     { id: 61, name: "僵尸墓碑", en: "ZOMBIE_GRAVESTONE", type: "场地单位", feature: "出现在草地上并阻挡植物放置。" },
@@ -836,6 +846,22 @@ window.PVZ_CATALOG = {
     81: "30 秒", 82: "15 秒", 83: "30 秒", 84: "30 秒", 85: "30 秒", 86: "7.5 秒", 87: "30 秒", 88: "30 秒", 89: "30 秒", 90: "30 秒",
     91: "15 秒", 92: "30 秒", 93: "15 秒", 94: "30 秒", 95: "30 秒", 96: "15 秒", 97: "30 秒", 98: "30 秒", 99: "60 秒", 100: "30 秒",
     101: "30 秒", 102: "30 秒", 103: "30 秒", 104: "30 秒", 105: "30 秒"
+  },
+  cardStates: {
+    210: [
+      { label: "双发形态", health: "300", damage: "2 × 20 / 轮", dps: { damage: 40, interval: [2.36, 2.5] } },
+      { label: "单发形态", health: "900", damage: "30 / 轮", dps: { damage: 30, interval: [2.36, 2.5] } },
+      { label: "防御形态", health: "1500", damage: "不主动攻击", dps: { damage: 0, interval: [2.36, 2.5] } }
+    ],
+    208: [
+      { label: "半血以上", health: "2000–4000", damage: "2 × 20 / 轮（相隔 1 秒发射）", dps: { damage: 40, interval: 2 } },
+      { label: "半血以下", health: "1–1999", damage: "20 / 轮", dps: { damage: 20, interval: 2 } }
+    ],
+    98: [
+      { label: "正常状态", health: 190, speed: { value: "4.6–7.4", unit: "秒/格" } },
+      { label: "一次分裂", health: 140, speed: { value: "4.6–7.4", unit: "秒/格" } },
+      { label: "二次分裂", health: 85, speed: { value: "4.6–7.4", unit: "秒/格" } }
+    ]
   },
   zombieMoundProfiles: {
     0: { summon: "普通僵尸", count: "1 只", firstInterval: "20–30 秒（随机）", interval: "47–50 秒（随机）" },
@@ -917,7 +943,12 @@ window.PVZ_CATALOG = {
     68: { value: "4.6–7.4", unit: "秒/格", note: "报纸破损后 1.9 秒/格。" },
     69: { value: "4.6–7.4", unit: "秒/格" },
     70: { value: "2.5–2.6", unit: "秒/格" },
-    71: { value: "3.8", unit: "秒/格" },
+    71: { phases: [
+      { label: "入场速度", value: "3.8", unit: "秒/格" },
+      { label: "舞步前进速度", value: "3.8", unit: "秒/格" },
+      { label: "舞步周期", value: "前进 2.4 秒，停步 2.2 秒" },
+      { label: "舞步平均速度", value: "7.2", unit: "秒/格" }
+    ] },
     72: { value: "2.2–3.5", unit: "秒/格" },
     73: { value: "2.5–2.6", unit: "秒/格" },
     74: { value: "1.2", unit: "秒/格", note: "出土后步行 14.2 秒/格。" },
@@ -929,7 +960,7 @@ window.PVZ_CATALOG = {
     81: { value: "2.2–3.5", unit: "秒/格", note: "雪橇损坏后步行 4.6–7.4 秒/格。" },
     82: { value: "2.5–2.6", unit: "秒/格", note: "水下 2.7 秒/格。" },
     83: { value: "2.2–3.5", unit: "秒/格", note: "失去海豚后步行 1.9 秒/格；水中步行 4.6–7.4 秒/格。" },
-    84: { value: "4.6–7.4", unit: "秒/格" },
+    84: { value: "3.8", unit: "秒/格" },
     85: { value: "2.7", unit: "秒/格", note: "气球破裂后步行 4.6–7.4 秒/格。" },
     86: { value: "4.6–7.4", unit: "秒/格" },
     87: { value: "4.6–7.4", unit: "秒/格" },
@@ -938,11 +969,16 @@ window.PVZ_CATALOG = {
     90: { value: "4.6–7.4", unit: "秒/格" },
     92: { value: "4.6–7.4", unit: "秒/格", note: "冲刺时 1.1 秒/格。" },
     93: { value: "3.8", unit: "秒/格" },
-    94: { value: "3.8", unit: "秒/格", note: "登场舞步 3.4 秒/格。" },
+    94: { phases: [
+      { label: "入场月步速度", value: "1.1", unit: "秒/格" },
+      { label: "舞步前进速度", value: "3.8", unit: "秒/格" },
+      { label: "舞步周期", value: "前进 2.4 秒，停步 2.2 秒" },
+      { label: "舞步平均速度", value: "7.2", unit: "秒/格" }
+    ] },
     95: { value: "2.5–2.6", unit: "秒/格", note: "跃过后步行 4.6–7.4 秒/格。" },
     96: { value: "4.6–7.4", unit: "秒/格", note: "周刊破损后 1.9 秒/格。" },
     97: { value: "3.8", unit: "秒/格" },
-    98: { value: "4.6–7.4", unit: "秒/格" },
+    98: { value: "4.4–7.1", unit: "秒/格" },
     99: { value: "4.6–7.4", unit: "秒/格" },
     100: { value: "3.8", unit: "秒/格", note: "小狗脱绳后步行 1.9 秒/格。" },
     101: { value: "4.6–7.4", unit: "秒/格", note: "传送后瞬间位移。" },
@@ -1497,6 +1533,18 @@ const closeDetail = document.getElementById("close-detail");
 const selectedIds = { plants: 0, zombies: 62 };
 const variantIndex = { 91: 0 };
 const oneTimePlantIds = new Set([2, 4, 12, 14, 15, 17, 19, 20, 27, 35, 200, 206, 207]);
+const specialMechanisms = {
+  plants: {
+    11: "吞噬二级及以上的召唤墓碑需要消耗 2 个墓碑吞。",
+    18: "位于第一路或第五路时，会额外发射一颗豌豆。",
+    200: "场上有多只僵尸时，会优先冻结火把僵尸。"
+  },
+  zombies: {
+    89: "本体生命值降至 135 以下时，会碾压植物。",
+    93: "倒计时结束后（约走至第三列），接触植物时会自爆，造成 301 点伤害。",
+    94: "入场时记录场上所有僵尸；倒计时结束后，复活其中已死亡的僵尸。本体生命值恢复至原值的 2/3，防具生命值恢复至原值的 1/2，最多复活 15 只。"
+  }
+};
 let category = "plants";
 let returnFocus = null;
 
@@ -1523,6 +1571,10 @@ function getCardDescription(card) {
   return window.PVZ_GAME_STRINGS?.[card.en]?.description || "";
 }
 
+function getSpecialMechanism(card) {
+  return specialMechanisms[category][card.id] || "";
+}
+
 function addText(parent, tag, className, content) {
   const element = document.createElement(tag);
   if (className) element.className = className;
@@ -1535,19 +1587,26 @@ function formatNumber(value) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, "");
 }
 
+function getCardState(card) {
+  return catalog.cardStates[card.id]?.[variantIndex[card.id] || 0];
+}
+
 function getDps(card) {
-  const profile = catalog.dpsProfiles[card.id];
+  const profile = getCardState(card)?.dps || catalog.dpsProfiles[card.id];
   if (!profile) return null;
-  const hits = Array.isArray(profile.damage) ? profile.damage : [profile.damage, profile.damage];
+  const hits = Array.isArray(profile.damage) ? profile.damage : [profile.damage];
+  const intervals = Array.isArray(profile.interval) ? profile.interval : [profile.interval];
   const hitsPerTarget = profile.hitsPerTarget ?? 1;
-  const dps = hits.map((damage) => damage * hitsPerTarget / profile.interval);
-  const peaDps = catalog.dpsProfiles[0].damage / catalog.dpsProfiles[0].interval;
-  const formatRange = (values, formatter) => values[0] === values[1]
-    ? formatter(values[0])
-    : `${formatter(values[0])}–${formatter(values[1])}`;
+  const expectedDamage = profile.probabilities
+    ? hits.reduce((sum, damage, index) => sum + damage * profile.probabilities[index], 0)
+    : hits.reduce((sum, damage) => sum + damage, 0) / hits.length;
+  const averageInterval = intervals.reduce((sum, interval) => sum + interval, 0) / intervals.length;
+  const dps = expectedDamage * hitsPerTarget / averageInterval;
+  const peaInterval = catalog.dpsProfiles[0].interval;
+  const peaDps = catalog.dpsProfiles[0].damage / (Array.isArray(peaInterval) ? (peaInterval[0] + peaInterval[1]) / 2 : peaInterval);
   return {
-    value: formatRange(dps, formatNumber),
-    ratio: formatRange(dps.map((value) => value / peaDps), formatNumber)
+    value: formatNumber(dps),
+    ratio: Number((dps / peaDps).toFixed(2)).toString()
   };
 }
 
@@ -1605,24 +1664,29 @@ function addStat(rows, label, value) {
 function renderVariants(card) {
   const list = document.getElementById("variant-list");
   list.replaceChildren();
-  if (!card.variants) {
+  const states = catalog.cardStates[card.id];
+  const variants = states || card.variants;
+  if (!variants) {
     list.hidden = true;
     return;
   }
   list.hidden = false;
-  addText(list, "span", "variant-label", "墓堆等级");
-  card.variants.forEach((level) => {
+  const label = states ? category === "plants" ? "植物状态" : "僵尸状态" : "墓堆等级";
+  addText(list, "span", "variant-label", label);
+  variants.forEach((variant, index) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "variant-button";
-    button.classList.toggle("is-active", variantIndex[card.id] === level);
-    button.setAttribute("aria-pressed", String(variantIndex[card.id] === level));
-    button.textContent = String(level + 1);
-    button.setAttribute("aria-label", `墓堆等级 ${level + 1}`);
+    const active = (variantIndex[card.id] || 0) === index;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+    button.textContent = states ? variant.label : String(variant + 1);
+    button.setAttribute("aria-label", `${label} ${button.textContent}`);
     button.addEventListener("click", () => {
-      variantIndex[card.id] = level;
+      variantIndex[card.id] = index;
       renderGrid();
       renderDetail();
+      list.querySelectorAll("button")[index].focus();
     });
     list.append(button);
   });
@@ -1646,8 +1710,9 @@ function renderDetail() {
     "detail-art"
   );
 
+  const cardState = getCardState(card);
   const zombieStats = !isPlant ? catalog.zombieStats[card.id] : null;
-  const zombieSpeed = !isPlant ? catalog.zombieSpeeds[card.id] : null;
+  const zombieSpeed = !isPlant ? cardState?.speed || catalog.zombieSpeeds[card.id] : null;
   const zombieMound = !isPlant && card.id === 91 ? catalog.zombieMoundProfiles[variantIndex[card.id] || 0] : null;
   const zombieCost = !isPlant ? getZombieCost(card) : null;
   const health = zombieStats ? getZombieHealth(card, zombieStats) : null;
@@ -1661,6 +1726,10 @@ function renderDetail() {
   document.getElementById("detail-recharge").textContent = isPlant
     ? getPlantRecharge(card)
     : catalog.zombieRecharges?.[card.id] ?? "未收录";
+  const openingRecharge = getOpeningRecharge(card);
+  document.getElementById("detail-opening-recharge").textContent = openingRecharge === null
+    ? "未收录"
+    : `${formatNumber(openingRecharge)} 秒`;
   const suddenDeathRecharge = catalog.suddenDeathRecharges[card.id];
   document.getElementById("detail-sudden-death-recharge").textContent = suddenDeathRecharge === null
     ? "停用"
@@ -1669,8 +1738,9 @@ function renderDetail() {
   const stats = document.getElementById("stat-list");
   stats.replaceChildren();
   if (isPlant) {
-    if (card.damage && card.damage !== "无直接伤害" && card.damage !== "不攻击僵尸") {
-      addStat(stats, /\d/.test(card.damage) || card.singleDamage !== undefined || dps ? "伤害" : "效果", card.damage);
+    const damage = cardState?.damage ?? card.damage;
+    if (damage && damage !== "无直接伤害" && damage !== "不攻击僵尸") {
+      addStat(stats, /\d/.test(damage) || card.singleDamage !== undefined || dps ? "伤害" : "效果", damage);
     }
     if (dps) addStat(stats, "每秒伤害", `${dps.value}（${dps.ratio} 豆）`);
     if (oneTimePlantIds.has(card.id)) {
@@ -1678,7 +1748,7 @@ function renderDetail() {
     } else if (card.attackInterval !== "—" && !/一次性|触发后一次|触发后生效|被吃后触发|布置后启动|产阳|产币|自动拾取|按目标触发|受攻击触发|复制目标/.test(card.attackInterval)) {
       addStat(stats, "攻击间隔", card.attackInterval);
     }
-    addStat(stats, "生命值", card.health);
+    addStat(stats, "生命值", cardState?.health ?? card.health);
   } else {
     addStat(stats, "生命值", health ?? "未收录");
     if (zombieStats?.health?.armor) addStat(stats, "防具强度", zombieStats.health.armor);
@@ -1686,7 +1756,13 @@ function renderDetail() {
     if (zombieDps !== null) addStat(stats, "每秒伤害", zombieDps);
     if (zombieStats?.healingPerSecond !== undefined) addStat(stats, "每秒治疗", formatNumber(zombieStats.healingPerSecond));
     if (zombieStats?.attackInterval) addStat(stats, "攻击间隔", zombieStats.attackInterval);
-    if (zombieSpeed) addStat(stats, "速度", [zombieSpeed.value, zombieSpeed.unit].filter(Boolean).join(" "));
+    if (zombieSpeed?.phases) {
+      for (const phase of zombieSpeed.phases) {
+        addStat(stats, phase.label, phase.unit ? `${phase.value} ${phase.unit}` : phase.value);
+      }
+    } else if (zombieSpeed) {
+      addStat(stats, "速度", [zombieSpeed.value, zombieSpeed.unit].filter(Boolean).join(" "));
+    }
     if (zombieSpeed?.note) addStat(stats, "速度变化", zombieSpeed.note);
     if (zombieMound) {
       addStat(stats, "墓堆等级", String((variantIndex[card.id] || 0) + 1));
@@ -1699,6 +1775,9 @@ function renderDetail() {
   document.getElementById("detail-attack").hidden = true;
   document.getElementById("detail-attack").textContent = "";
   document.getElementById("detail-ability").textContent = getCardDescription(card);
+  const mechanism = getSpecialMechanism(card);
+  document.getElementById("detail-mechanism").textContent = mechanism;
+  document.getElementById("mechanism-section").hidden = !mechanism;
   renderVariants(card);
 }
 
@@ -1729,10 +1808,19 @@ function getPlantRecharge(card) {
   return catalog.plantRecharges[card.id] ?? card.recharge;
 }
 
+function getOpeningRecharge(card) {
+  const group = category === "plants" ? "plants" : "zombies";
+  const overrides = catalog.openingRechargeOverrides[group];
+  if (Object.hasOwn(overrides, card.id)) return overrides[card.id];
+  const rechargeText = category === "plants" ? getPlantRecharge(card) : catalog.zombieRecharges?.[card.id];
+  const recharge = Number.parseFloat(rechargeText);
+  return catalog.openingRechargeDefaults[String(recharge)] ?? null;
+}
+
 function getZombieHealth(card, stats) {
   const health = stats.health;
   if (card.id === 91) return health.levels[variantIndex[card.id] || 0];
-  return health.value;
+  return getCardState(card)?.health ?? health.value;
 }
 
 function renderCategory() {

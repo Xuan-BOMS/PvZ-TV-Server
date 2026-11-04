@@ -40,7 +40,11 @@ final class DashboardServer {
         defaultProperty("sun.net.httpserver.maxReqHeaderSize", "16384");
         String bindAddress = System.getProperty("pvz.dashboard.bindAddress", "0.0.0.0");
         HttpServer server = HttpServer.create(new InetSocketAddress(bindAddress, port), 64);
+        server.createContext("/site/", new SiteAssetHandler());
+        server.createContext("/assets/site/ui/", new SiteImageHandler());
+        server.createContext("/assets/cards/", new CardImageHandler());
         server.createContext("/almanac/", new AlmanacHandler());
+        server.createContext("/data/", new DataHandler());
         server.createContext("/", new IndexHandler());
         server.createContext("/api/top-decks", new TopDecksHandler());
         server.createContext("/api/card-stats", new CardStatsHandler());
@@ -79,7 +83,92 @@ final class DashboardServer {
                 writeText(exchange, 405, "Method Not Allowed", "text/plain; charset=utf-8");
                 return;
             }
-            writeText(exchange, 200, buildHtml(), "text/html; charset=utf-8");
+            writeResource(exchange, "/site/index.html", "text/html; charset=utf-8");
+        }
+    }
+
+    private static final class DataHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                writeText(exchange, 405, "Method Not Allowed", "text/plain; charset=utf-8");
+                return;
+            }
+            writeResource(exchange, "/site/data.html", "text/html; charset=utf-8");
+        }
+    }
+
+    private static final class SiteAssetHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                writeText(exchange, 405, "Method Not Allowed", "text/plain; charset=utf-8");
+                return;
+            }
+            String path = exchange.getRequestURI().getPath();
+            String name = path.startsWith("/site/") ? path.substring("/site/".length()) : "";
+            String type = switch (name) {
+                case "portal.css", "data.css" -> "text/css; charset=utf-8";
+                case "portal.js", "data.js", "download-links.js" -> "text/javascript; charset=utf-8";
+                case "ui/data-scene.webp", "ui/atlas-scene.webp", "ui/download-crate.webp" -> "image/webp";
+                default -> null;
+            };
+            if (type == null) {
+                writeText(exchange, 404, "Not Found", "text/plain; charset=utf-8");
+                return;
+            }
+            String resourcePath = "image/webp".equals(type) ? "/assets/site/" + name : "/site/" + name;
+            writeResource(exchange, resourcePath, type);
+        }
+    }
+
+    private static final class SiteImageHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                writeText(exchange, 405, "Method Not Allowed", "text/plain; charset=utf-8");
+                return;
+            }
+            String path = exchange.getRequestURI().getPath();
+            String name = path.startsWith("/assets/site/ui/") ? path.substring("/assets/site/ui/".length()) : "";
+            if (!List.of("data-scene.webp", "atlas-scene.webp", "download-crate.webp").contains(name)) {
+                writeText(exchange, 404, "Not Found", "text/plain; charset=utf-8");
+                return;
+            }
+            writeResource(exchange, "/assets/site/ui/" + name, "image/webp");
+        }
+    }
+
+    private static final class CardImageHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                writeText(exchange, 405, "Method Not Allowed", "text/plain; charset=utf-8");
+                return;
+            }
+            String path = exchange.getRequestURI().getPath();
+            String name = path.startsWith("/assets/cards/") ? path.substring("/assets/cards/".length()) : "";
+            if (!name.matches("SEED_PACKET_[0-9]{2,3}(?:_MOUND_LEVEL_[0-4])?\\.PNG")) {
+                writeText(exchange, 404, "Not Found", "text/plain; charset=utf-8");
+                return;
+            }
+            writeResource(exchange, "/assets/cards/" + name, "image/png");
+        }
+    }
+
+    private static void writeResource(HttpExchange exchange, String resourcePath, String contentType) throws IOException {
+        try (InputStream resource = DashboardServer.class.getResourceAsStream(resourcePath)) {
+            if (resource == null) {
+                writeText(exchange, 404, "Not Found", "text/plain; charset=utf-8");
+                return;
+            }
+            byte[] content = resource.readAllBytes();
+            exchange.getResponseHeaders().set("Content-Type", contentType);
+            exchange.getResponseHeaders().set("Cache-Control", "no-store");
+            exchange.sendResponseHeaders(200, content.length);
+            try (OutputStream output = exchange.getResponseBody()) {
+                output.write(content);
+            }
         }
     }
 

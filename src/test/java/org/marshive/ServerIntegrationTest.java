@@ -231,21 +231,31 @@ public class ServerIntegrationTest {
         assertFalse(recent, recent.contains("player-CLASSIC"));
 
         String html = httpGet(base + 4000, "/");
-        assertTrue(html.contains("id='extraSel'"));
-        assertTrue(html.contains("id='banSel'"));
-        assertTrue(html.contains("id='modeSel'"));
-        assertTrue(html.contains("src='/almanac/'"));
+        assertTrue(html.contains("对战资料站"));
+        assertTrue(html.contains("data-server-path=\"/data/\""));
+        assertTrue(html.contains("data-server-path=\"/almanac/\""));
+        String dashboard = httpGet(base + 4000, "/data/");
+        assertTrue(dashboard.contains("id=\"extraSel\""));
+        assertTrue(dashboard.contains("id=\"banSel\""));
+        assertTrue(dashboard.contains("id=\"modeSel\""));
+        assertTrue(dashboard.contains("id=\"deckTitle\""));
+        assertTrue(html.contains("data-almanac-src=\"/almanac/\""));
         assertFalse(html.contains("gameModeSel"));
         assertFalse(html.contains("game_mode"));
         assertFalse(html.contains("bpSel"));
         assertFalse(html.contains("balance_patch"));
+        assertTrue(httpGet(base + 4000, "/site/data.js").contains("function renderDecks"));
+        assertTrue(httpGet(base + 4000, "/site/ui/data-scene.webp").length() > 0);
+        assertTrue(httpGet(base + 4000, "/assets/site/ui/data-scene.webp").length() > 0);
+        assertHttpStatus(base + 4000, "/assets/cards/SEED_PACKET_00.PNG", 200);
+        assertHttpStatus(base + 4000, "/assets/cards/SEED_PACKET_91_MOUND_LEVEL_0.PNG", 200);
+        assertHttpStatus(base + 4000, "/assets/cards/%2e%2e%2fsite%2fdata.js", 404);
         String almanac = httpGet(base + 4000, "/almanac/");
         assertTrue(almanac.contains("<title>植物图鉴 · PvZ TV</title>"));
         assertTrue(almanac.contains("V3215"));
         assertTrue(almanac.contains("window.PVZ_IMAGE_DATA"));
         assertFalse(almanac.contains("github.io"));
-        Files.writeString(directory.resolve("dashboard.html"), html);
-        Files.writeString(directory.resolve("dashboard.js"), html.substring(html.indexOf("<script>") + 8, html.indexOf("</script>")));
+        Files.writeString(directory.resolve("dashboard.html"), dashboard);
     }
 
     private void verifyVersionStatistics(int base) throws Exception {
@@ -313,11 +323,13 @@ public class ServerIntegrationTest {
         assertEquals("ERR", metrics(base, "SETTLE|v-invalid|5|PLANT_WIN|100||netplay_version=4294967296\n"));
         assertEquals("OK", metrics(base, "SETTLE|v-new|5|PLANT_WIN|100||game_mode=NORMAL&netplay_version=3213\n"));
         assertEquals("{\"items\":[3213,3212]}", httpGet(base + 4000, "/api/versions"));
-        String html = httpGet(base + 4000, "/");
-        assertTrue(html.contains("id='versionSel'"));
-        assertTrue(html.contains("value='all'"));
-        assertTrue(html.contains("/api/versions"));
-        assertTrue(html.contains("&netplay_version="));
+        String dashboard = httpGet(base + 4000, "/data/");
+        assertTrue(dashboard.contains("id=\"versionSel\""));
+        assertTrue(dashboard.contains("value=\"all\""));
+        assertTrue(dashboard.contains("/site/data.js"));
+        String script = httpGet(base + 4000, "/site/data.js");
+        assertTrue(script.contains("/api/versions"));
+        assertTrue(script.contains("netplay_version"));
     }
 
     private void relayRoundTrip(int base) throws Exception {
