@@ -182,15 +182,12 @@ final class SeedTypeNames {
     private static void loadLocalizedStrings(String path) {
         File f = new File(path);
         if (!f.exists()) return;
-        int before = ZH.size();
         String[] charsets = new String[]{"UTF-8", "GBK", "UTF-16LE", "UTF-16"};
         for (String cs : charsets) {
             if (tryLoad(f, cs)) {
-                int loaded = ZH.size() - before;
-                if (loaded > 0) {
-                    System.out.println("[SEED_I18N] loaded " + loaded + " from " + f.getPath() + " (" + cs + ")");
-                    return;
-                }
+                // Overriding bundled entries is a successful load even when the map does not grow.
+                System.out.println("[SEED_I18N] loaded from " + f.getPath() + " (" + cs + ")");
+                return;
             }
         }
     }
