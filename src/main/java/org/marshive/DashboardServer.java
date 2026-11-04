@@ -5,10 +5,13 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 
 import java.io.IOException;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -17,15 +20,26 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.HexFormat;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.zip.GZIPOutputStream;
 
 final class DashboardServer {
     private static final String DB_URL = "jdbc:sqlite:data/pvz_metrics.db";
     private static final String ALMANAC_RESOURCE = "/almanac/index.html";
     private static final int SUNFLOWER_SEED = 1;
     private static final int GRAVESTONE_SEED = 61;
+    private static final Map<String, CachedResource> RESOURCES = new ConcurrentHashMap<>();
+    private static final List<String> SITE_IMAGES = List.of("data-scene.webp", "atlas-scene.webp", "download-crate.webp",
+            "home-background.webp", "plant-background.webp", "zombie-background.webp", "almanac-book.webp",
+            "data-shop.webp", "download-versus.webp");
+
+    private record CachedResource(byte[] content, byte[] gzip, String etag) {
+    }
 
     private DashboardServer() {
     }
@@ -108,10 +122,9 @@ final class DashboardServer {
             String path = exchange.getRequestURI().getPath();
             String name = path.startsWith("/site/") ? path.substring("/site/".length()) : "";
             String type = switch (name) {
-                case "portal.css", "data.css" -> "text/css; charset=utf-8";
+                case "portal.css", "data.css", "common.css" -> "text/css; charset=utf-8";
                 case "portal.js", "data.js", "download-links.js" -> "text/javascript; charset=utf-8";
-                case "ui/data-scene.webp", "ui/atlas-scene.webp", "ui/download-crate.webp" -> "image/webp";
-                default -> null;
+                default -> name.startsWith("ui/") && SITE_IMAGES.contains(name.substring(3)) ? "image/webp" : null;
             };
             if (type == null) {
                 writeText(exchange, 404, "Not Found", "text/plain; charset=utf-8");
@@ -131,7 +144,7 @@ final class DashboardServer {
             }
             String path = exchange.getRequestURI().getPath();
             String name = path.startsWith("/assets/site/ui/") ? path.substring("/assets/site/ui/".length()) : "";
-            if (!List.of("data-scene.webp", "atlas-scene.webp", "download-crate.webp").contains(name)) {
+            if (!SITE_IMAGES.contains(name)) {
                 writeText(exchange, 404, "Not Found", "text/plain; charset=utf-8");
                 return;
             }
@@ -148,28 +161,87 @@ final class DashboardServer {
             }
             String path = exchange.getRequestURI().getPath();
             String name = path.startsWith("/assets/cards/") ? path.substring("/assets/cards/".length()) : "";
-            if (!name.matches("SEED_PACKET_[0-9]{2,3}(?:_MOUND_LEVEL_[0-4])?\\.PNG")) {
+            if (!name.matches("SEED_PACKET_[0-9]{2,3}(?:_MOUND_LEVEL_[0-4])?\\.(?:PNG|webp)")) {
                 writeText(exchange, 404, "Not Found", "text/plain; charset=utf-8");
                 return;
             }
-            writeResource(exchange, "/assets/cards/" + name, "image/png");
+            writeResource(exchange, "/assets/cards/" + name, name.endsWith(".webp") ? "image/webp" : "image/png");
         }
     }
 
     private static void writeResource(HttpExchange exchange, String resourcePath, String contentType) throws IOException {
-        try (InputStream resource = DashboardServer.class.getResourceAsStream(resourcePath)) {
-            if (resource == null) {
-                writeText(exchange, 404, "Not Found", "text/plain; charset=utf-8");
-                return;
-            }
-            byte[] content = resource.readAllBytes();
-            exchange.getResponseHeaders().set("Content-Type", contentType);
-            exchange.getResponseHeaders().set("Cache-Control", "no-store");
-            exchange.sendResponseHeaders(200, content.length);
-            try (OutputStream output = exchange.getResponseBody()) {
-                output.write(content);
+        CachedResource cached = RESOURCES.get(resourcePath);
+        if (cached == null) {
+            try (InputStream resource = DashboardServer.class.getResourceAsStream(resourcePath)) {
+                if (resource == null) {
+                    writeText(exchange, 404, "Not Found", "text/plain; charset=utf-8");
+                    return;
+                }
+                byte[] content = resource.readAllBytes();
+                byte[] gzip = null;
+                if (contentType.startsWith("text/") && content.length > 512) {
+                    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                    try (GZIPOutputStream compressor = new GZIPOutputStream(buffer)) {
+                        compressor.write(content);
+                    }
+                    gzip = buffer.toByteArray();
+                }
+                String hash;
+                try {
+                    hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content));
+                } catch (NoSuchAlgorithmException exception) {
+                    throw new IllegalStateException(exception);
+                }
+                cached = new CachedResource(content, gzip, hash);
+                CachedResource previous = RESOURCES.putIfAbsent(resourcePath, cached);
+                if (previous != null) cached = previous;
             }
         }
+        boolean compressed = cached.gzip() != null && acceptsGzip(exchange);
+        String etag = '"' + cached.etag() + (compressed ? "-gzip" : "") + '"';
+        exchange.getResponseHeaders().set("Content-Type", contentType);
+        exchange.getResponseHeaders().set("Cache-Control", "public, max-age=0, must-revalidate");
+        exchange.getResponseHeaders().set("ETag", etag);
+        if (cached.gzip() != null) exchange.getResponseHeaders().set("Vary", "Accept-Encoding");
+        if (compressed) exchange.getResponseHeaders().set("Content-Encoding", "gzip");
+        String condition = exchange.getRequestHeaders().getFirst("If-None-Match");
+        if (condition != null) {
+            for (String candidate : condition.split(",")) {
+                String tag = candidate.trim();
+                if (tag.equals("*") || tag.equals(etag) || tag.equals("W/" + etag)) {
+                    exchange.sendResponseHeaders(304, -1);
+                    exchange.close();
+                    return;
+                }
+            }
+        }
+        byte[] content = compressed ? cached.gzip() : cached.content();
+        exchange.sendResponseHeaders(200, content.length);
+        try (OutputStream output = exchange.getResponseBody()) {
+            output.write(content);
+        }
+    }
+
+    private static boolean acceptsGzip(HttpExchange exchange) {
+        String header = exchange.getRequestHeaders().getFirst("Accept-Encoding");
+        if (header == null) return false;
+        for (String encoding : header.split(",")) {
+            String[] parts = encoding.trim().split(";");
+            if (!parts[0].trim().equalsIgnoreCase("gzip")) continue;
+            double quality = 1;
+            for (int index = 1; index < parts.length; index++) {
+                String parameter = parts[index].trim();
+                if (parameter.startsWith("q=")) {
+                    try {
+                        quality = Double.parseDouble(parameter.substring(2));
+                    } catch (NumberFormatException exception) {
+                        quality = 0;
+                    }
+                }
+            }
+            return quality > 0;
+        }
+        return false;
     }
 
     private static final class AlmanacHandler implements HttpHandler {
@@ -183,19 +255,7 @@ final class DashboardServer {
                 writeText(exchange, 404, "Not Found", "text/plain; charset=utf-8");
                 return;
             }
-            try (InputStream almanac = DashboardServer.class.getResourceAsStream(ALMANAC_RESOURCE)) {
-                if (almanac == null) {
-                    writeText(exchange, 404, "Not Found", "text/plain; charset=utf-8");
-                    return;
-                }
-                byte[] content = almanac.readAllBytes();
-                exchange.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
-                exchange.getResponseHeaders().set("Cache-Control", "no-store");
-                exchange.sendResponseHeaders(200, content.length);
-                try (OutputStream output = exchange.getResponseBody()) {
-                    output.write(content);
-                }
-            }
+            writeResource(exchange, ALMANAC_RESOURCE, "text/html; charset=utf-8");
         }
     }
 

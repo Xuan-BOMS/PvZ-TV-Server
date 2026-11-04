@@ -195,3 +195,7 @@ tbody tr:hover td:first-child { background: var(--leaf-soft); }
   .data-footer { min-height: 42px; font-size: 12px; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+body:not([data-theme="dark"]) { background: #c49658 url("./ui/home-background.webp") center top / cover fixed no-repeat; }
+.data-banner { border: 0; background: transparent; }
+.data-banner-board { background: linear-gradient(#936439, #6b4225); }

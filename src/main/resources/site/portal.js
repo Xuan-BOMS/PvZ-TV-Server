@@ -9,8 +9,8 @@
   downloads.className = "download-dialog";
   downloads.setAttribute("aria-labelledby", "downloadTitle");
   downloads.innerHTML = `<button class="dialog-close" type="button" aria-label="关闭下载窗口">×</button>
-    <div class="download-heading"><img src="./assets/site/ui/download-crate.webp" width="1200" height="800" alt="装满种子卡的木制补给箱">
-    <div><p class="eyebrow">READY TO PLANT?</p><h2 id="downloadTitle">游戏下载</h2><p>选择你常用的网盘</p></div></div>
+    <div class="download-heading"><img src="./site/ui/download-versus.webp" width="119" height="119" alt="">
+    <h2 id="downloadTitle">游戏下载</h2></div>
     <div class="download-links"></div><p class="download-note">下载链接待补充</p>`;
   const list = downloads.querySelector(".download-links");
   for (const item of window.PVZ_DOWNLOADS || []) {
@@ -43,7 +43,11 @@
   }
   downloads.querySelector(".download-note").hidden = (window.PVZ_DOWNLOADS || []).some(item => /^https?:\/\//i.test(item.url || ""));
   document.body.append(downloads);
-  document.querySelectorAll("[data-open-downloads]").forEach(button => button.addEventListener("click", () => downloads.showModal()));
+  if (location.hash === "#downloads") downloads.showModal();
+  document.querySelectorAll("[data-open-downloads]").forEach(button => button.addEventListener("click", event => {
+    event.preventDefault();
+    downloads.showModal();
+  }));
   downloads.querySelector(".dialog-close").addEventListener("click", () => downloads.close());
   downloads.addEventListener("click", event => {
     const rect = downloads.getBoundingClientRect();

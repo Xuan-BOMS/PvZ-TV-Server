@@ -1,89 +1,74 @@
-:root {
-  color-scheme: light;
-  --paper: #f4eddd;
-  --paper-deep: #e5d8ba;
-  --ink: #27352b;
-  --muted: #687166;
-  --green: #426b3b;
-  --green-deep: #243d2d;
-  --wood: #805532;
-  --line: #d4c4a2;
-  --slate: #5f657c;
-  --focus: #b95b25;
-  font-family: "Trebuchet MS", "Microsoft YaHei", sans-serif;
-  color: var(--ink);
-  background: var(--paper);
-}
+:root { color-scheme: light; --ink: #402b1c; --muted: #765b3e; --focus: #fff0a0; font-family: "Trebuchet MS", "Microsoft YaHei", sans-serif; color: var(--ink); background: #b9874b; }
 * { box-sizing: border-box; }
-body { margin: 0; min-width: 320px; background: var(--paper); }
-button { font: inherit; }
+body { margin: 0; min-width: 320px; min-height: 100svh; background: #b9874b url("./ui/home-background.webp") center top / cover fixed no-repeat; }
+button { font: inherit; cursor: pointer; }
 a { color: inherit; text-decoration: none; }
 a, button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-a, button { cursor: pointer; }
-a:focus-visible, button:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+a:focus-visible, button:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 h1, h2, p { margin: 0; }
-.site-shell { width: min(1320px, 100%); margin: 0 auto; padding: 0 36px; }
-.site-header { min-height: 76px; display: flex; justify-content: space-between; align-items: center; gap: 26px; border-bottom: 1px solid #cdbd9b; }
-.brand { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 11px; }
-.brand-mark { width: 35px; height: 35px; border: 2px solid #614723; border-radius: 50%; background: radial-gradient(circle, #6d4926 0 27%, #f3c850 29% 54%, #4a7b36 56%); box-shadow: 0 1px 2px #432d1c66; position: relative; }
-.brand-mark::after { content: ""; position: absolute; left: 14px; bottom: -7px; width: 7px; height: 11px; border-radius: 8px 0 8px 0; background: #4c7639; transform: rotate(35deg); }
-.brand strong { display: block; font: bold 20px/1.1 Georgia, "Microsoft YaHei", serif; }
-.brand small { display: block; margin-top: 4px; font-size: 12px; color: var(--muted); }
-.site-nav { display: flex; align-items: stretch; min-height: 76px; gap: 25px; }
-.site-nav a { display: flex; align-items: center; padding: 0 3px; border-bottom: 3px solid transparent; color: #536050; font-size: 14px; transition: color .18s, border-color .18s; }
-.site-nav a:hover, .site-nav a.is-current { color: var(--green-deep); border-bottom-color: #64864f; }
-.page-intro { min-height: 120px; display: flex; justify-content: space-between; align-items: end; gap: 24px; padding: 28px 1px 22px; }
-.eyebrow, .section-kicker { color: #7f613c; font-size: 12px; font-weight: bold; letter-spacing: 1px; }
-.page-intro .eyebrow { margin-bottom: 7px; }
-.page-intro h1 { font: bold 29px/1.2 Georgia, "Microsoft YaHei", serif; }
-.page-intro > p { padding-bottom: 4px; color: var(--muted); font-size: 14px; }
-.destination-grid { display: grid; grid-template-columns: minmax(0, 1.28fr) minmax(0, .92fr); gap: 22px; }
-.destination { min-width: 0; display: flex; flex-direction: column; background: #fbf8ef; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 3px 12px #55472b14; overflow: hidden; transition: border-color .18s, box-shadow .18s; }
-.destination:hover { border-color: #84916f; box-shadow: 0 8px 22px #55472b1e; }
-.destination-visual { height: clamp(220px, 25vw, 310px); position: relative; overflow: hidden; background: #617648; }
-.destination-visual::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, #182b1c60, transparent 75%), linear-gradient(0deg, #182b1c35, transparent 45%); pointer-events: none; }
-.destination-visual img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.data-visual img { object-position: 62% 52%; }
-.atlas-visual img { object-position: center 48%; }
-.visual-label { position: absolute; z-index: 1; top: 16px; left: 18px; color: #f6edcd; font-size: 12px; font-weight: bold; letter-spacing: 1px; text-shadow: 0 1px 3px #17261dcc; }
-.visual-caption { position: absolute; z-index: 1; left: 18px; bottom: 17px; color: #fff4d2; font: bold 22px Georgia, "Microsoft YaHei", serif; text-shadow: 0 2px 4px #17261dcc; }
-.destination-content { flex: 1; min-height: 142px; display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 19px 22px; }
-.destination-content .section-kicker { margin-bottom: 6px; }
-.destination-content h2, .download-copy h2 { margin-bottom: 6px; font: bold 23px/1.25 Georgia, "Microsoft YaHei", serif; }
-.destination-content p:last-child, .download-copy > p:last-child { color: var(--muted); font-size: 14px; line-height: 1.6; }
-.text-link { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 9px; color: #42693b; font-size: 14px; font-weight: bold; }
-.text-link span { font-size: 18px; transition: transform .18s; }
-a:hover .text-link span, .text-link:hover span { transform: translateX(3px); }
-.atlas-destination { border-top: 4px solid #686b7f; }
-.atlas-destination .destination-visual::after { background: linear-gradient(0deg, #1c26384a, transparent 50%); }
-.atlas-destination .section-kicker { color: #66687e; }
-.atlas-destination .text-link { color: #565a73; }
-.download-strip { min-height: 142px; display: grid; grid-template-columns: 135px minmax(180px, .8fr) minmax(240px, 1.2fr) auto; align-items: center; gap: 22px; margin-top: 24px; padding: 14px 22px; border-block: 1px solid var(--line); background: #eee5d1; }
-.download-strip > img { width: 135px; height: 103px; object-fit: cover; mix-blend-mode: multiply; }
-.download-copy .section-kicker { margin-bottom: 5px; }
-.download-copy h2 { margin-bottom: 4px; font-size: 21px; }
-.provider-names { color: #56634f; font-size: 13px; line-height: 1.7; }
-.provider-names span { padding: 0 5px; color: #a27845; }
-.download-trigger { min-height: 42px; padding: 0 4px; border: 0; background: transparent; }
-.site-footer { min-height: 60px; display: flex; justify-content: space-between; align-items: center; gap: 18px; color: #77705e; font-size: 12px; }
-.download-dialog { position: fixed; width: min(580px, calc(100% - 28px)); max-height: calc(100svh - 28px); padding: 22px; border: 1px solid #bba57d; border-radius: 8px; background: #f6efdf; color: var(--ink); box-shadow: 0 18px 65px #12191066; }
-.download-dialog::backdrop { background: #1f291ed9; backdrop-filter: blur(3px); }
-.dialog-close { position: absolute; top: 12px; right: 12px; width: 38px; height: 38px; border: 1px solid #b9a47b; border-radius: 4px; color: #394838; background: #f7edda; font-size: 22px; }
-.download-heading { min-height: 140px; display: flex; align-items: center; gap: 18px; padding-right: 32px; margin-bottom: 16px; }
-.download-heading img { width: 42%; height: 135px; object-fit: cover; mix-blend-mode: multiply; }
-.download-heading .eyebrow { margin-bottom: 6px; }
-.download-heading h2 { margin-bottom: 7px; font: bold 26px Georgia, "Microsoft YaHei", serif; }
-.download-heading p:last-child { color: var(--muted); font-size: 14px; }
+.site-shell { width: min(1100px, 100%); margin: 0 auto; padding: 0 40px; }
+.page-intro { height: clamp(130px, 15vh, 166px); display: flex; justify-content: center; align-items: flex-start; padding-top: 43px; }
+.page-intro h1 { color: #fff0cf; font: bold clamp(25px, 2.8vw, 34px)/1.2 Georgia, "Microsoft YaHei", serif; text-shadow: 0 2px 2px #422818; }
+.destination-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 38px; max-width: 780px; margin: 12px auto 0; }
+.destination { min-width: 0; min-height: 300px; display: flex; align-items: center; justify-content: flex-end; flex-direction: column; gap: 16px; padding: 24px 20px 25px; border: 3px solid #6b4428; border-radius: 8px; background: #e5bd7ac9; box-shadow: inset 0 0 0 2px #f5d79c, 0 5px 0 #6c4529, 0 9px 16px #59391d33; transition: transform .16s, background .16s; }
+.destination:hover { transform: translateY(-3px); background: #f0ce8fe8; }
+.destination img { display: block; width: auto; height: 190px; max-width: 100%; object-fit: contain; filter: drop-shadow(0 5px 3px #5f3b2633); }
+.atlas-destination img { width: 180px; height: 190px; }
+.destination h2, .download-strip > span { color: #fff0cc; font: bold 25px/1.2 Georgia, "Microsoft YaHei", serif; text-shadow: 0 2px #3d281a; }
+.destination h2 { width: 100%; padding: 10px 12px; border: 2px solid #53351f; border-radius: 4px; background: linear-gradient(#936439, #6b4225); text-align: center; box-shadow: inset 0 1px #c99a60; }
+.atlas-destination h2 { border-color: #474157; background: linear-gradient(#86839c, #5c586f); box-shadow: inset 0 1px #b5abc9; }
+.download-strip { width: min(780px, 100%); min-height: 110px; display: flex; align-items: center; justify-content: center; gap: 26px; margin: 30px auto 0; padding: 10px 24px; border: 3px solid #624024; border-radius: 6px; background: linear-gradient(#976b3df2, #7b512ef2); box-shadow: inset 0 0 0 1px #bd925b, 0 4px #5d3d24; transition: transform .16s; }
+.download-strip:hover { transform: translateY(-2px); }
+.download-strip > img { width: 86px; height: 86px; object-fit: contain; }
+.site-footer { min-height: 64px; display: grid; place-items: center; color: #563a25; font-size: 12px; text-align: center; }
+.download-dialog { position: fixed; width: min(550px, calc(100% - 24px)); max-height: calc(100svh - 24px); padding: 24px; border: 3px solid #684126; border-radius: 7px; background: #f1dfb6; color: var(--ink); box-shadow: inset 0 0 0 2px #fff0cf, 0 18px 65px #21180d77; }
+.download-dialog::backdrop { background: #281d12c9; }
+.dialog-close { position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; border: 1px solid #926b43; border-radius: 3px; color: #fff0cf; background: #80532f; font-size: 23px; }
+.download-heading { min-height: 115px; display: flex; align-items: center; gap: 20px; padding-right: 24px; margin-bottom: 15px; }
+.download-heading img { width: 95px; height: 95px; object-fit: contain; }
+.download-heading h2 { font: bold 25px Georgia, "Microsoft YaHei", serif; }
 .download-links { display: grid; gap: 8px; }
-.download-row { min-height: 61px; display: flex; align-items: center; gap: 12px; padding: 9px 11px; border: 1px solid #ddd0b1; border-radius: 4px; background: #fcf8ed; }
-.drive-mark { width: 38px; height: 38px; flex: 0 0 38px; display: grid; place-items: center; border: 1px solid #a99568; border-radius: 4px; color: #5a5c3d; background: #e9dfc5; font-size: 14px; font-weight: bold; }
+.download-row { min-height: 64px; display: flex; align-items: center; gap: 12px; padding: 9px 11px; border: 1px solid #c6a573; border-radius: 4px; background: #fff3d6; }
+.drive-mark { width: 36px; height: 36px; flex: 0 0 36px; display: grid; place-items: center; border: 1px solid #b59a67; border-radius: 4px; color: #65502d; background: #ecdbb0; font-size: 14px; font-weight: bold; }
 .drive-info { flex: 1; min-width: 0; }
 .drive-info strong { display: block; font-size: 14px; }
 .drive-info small { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
-.drive-action { min-width: 82px; padding: 8px; border: 1px solid #648052; border-radius: 3px; color: #fff8e8; background: #577148; text-align: center; font-size: 12px; text-decoration: none; }
-.drive-action:disabled { color: #736c5b; border-color: #c4b58f; background: #e5dac1; }
+.drive-action { min-width: 82px; padding: 8px; border: 1px solid #63804c; border-radius: 3px; color: #fff8e8; background: #557241; text-align: center; font-size: 12px; }
+.drive-action:disabled { color: #77694d; border-color: #c4b58f; background: #e5dac1; }
 .download-note { margin-top: 13px; color: var(--muted); text-align: center; font-size: 12px; }
-@media (min-width: 1400px) { .destination-content { min-height: 154px; padding-inline: 26px; } .download-strip { min-height: 156px; grid-template-columns: 150px minmax(200px, .8fr) minmax(260px, 1.2fr) auto; } .download-strip > img { width: 150px; height: 118px; } }
-@media (max-width: 860px) { .site-shell { padding: 0 22px; } .site-header { gap: 18px; } .site-nav { gap: 17px; } .destination-grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 15px; } .destination-content { align-items: start; flex-direction: column; gap: 12px; padding: 16px; } .destination-visual { height: clamp(190px, 25vw, 235px); } .download-strip { grid-template-columns: 105px minmax(180px, 1fr) auto; gap: 15px; } .download-strip > img { width: 105px; height: 92px; } .provider-names { grid-column: 2; grid-row: 2; } .download-trigger { grid-column: 3; grid-row: 1/3; } }
-@media (max-width: 620px) { .site-shell { padding: 0 16px; } .site-header { min-height: 66px; display: grid; grid-template-columns: 1fr; gap: 0; } .brand { min-height: 58px; } .site-nav { min-height: 43px; justify-content: space-between; gap: 8px; border-top: 1px solid #dfd2b8; } .site-nav a { min-height: 43px; font-size: 12px; } .page-intro { min-height: 104px; display: block; padding: 22px 0 16px; } .page-intro h1 { font-size: 25px; } .page-intro > p { margin-top: 7px; font-size: 13px; } .destination-grid { grid-template-columns: 1fr; gap: 14px; } .destination-visual { height: clamp(190px, 58vw, 260px); } .destination-content { min-height: 124px; flex-direction: row; align-items: center; gap: 12px; padding: 15px; } .destination-content h2 { font-size: 21px; } .destination-content p:last-child { font-size: 13px; } .text-link { font-size: 13px; white-space: nowrap; } .download-strip { grid-template-columns: 90px 1fr; gap: 8px 14px; margin-top: 19px; padding: 12px 0; } .download-strip > img { width: 90px; height: 82px; grid-row: 1/3; } .download-copy h2 { font-size: 19px; } .download-copy > p:last-child { font-size: 12px; } .provider-names { grid-column: 1/-1; grid-row: 3; padding-top: 7px; font-size: 12px; } .download-trigger { grid-column: 2; grid-row: 2; justify-self: start; min-height: 36px; } .site-footer { min-height: 49px; font-size: 12px; } .site-footer span:last-child { display: none; } .download-dialog { padding: 15px 12px; } .download-heading { min-height: 115px; gap: 9px; } .download-heading img { width: 38%; height: 110px; } .download-heading h2 { font-size: 22px; } .download-row { gap: 8px; padding: 8px; } .drive-action { min-width: 70px; padding: 8px 5px; font-size: 12px; } }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; } }
+@media (max-width: 760px) {
+  .site-shell { padding: 0 18px; }
+  .page-intro { height: 112px; padding-top: 22px; }
+  .page-intro h1 { font-size: 25px; }
+  .destination-grid { gap: 16px; margin-top: 3px; }
+  .destination { min-height: 245px; gap: 12px; padding: 20px 10px 16px; }
+  .destination img { height: 152px; }
+  .atlas-destination img { width: 143px; height: 152px; }
+  .destination h2 { padding: 9px 4px; font-size: 19px; }
+  .download-strip { margin-top: 24px; min-height: 96px; gap: 18px; }
+  .download-strip > img { width: 70px; height: 70px; }
+  .download-strip > span { font-size: 22px; }
+}
+@media (max-width: 380px) {
+  .site-shell { padding-inline: 12px; }
+  .destination-grid { gap: 12px; }
+  .destination { min-height: 216px; padding: 16px 8px 12px; }
+  .destination img, .atlas-destination img { height: 128px; max-width: 120px; }
+  .destination h2 { font-size: 17px; }
+  .download-dialog { padding: 15px 12px; }
+  .download-row { gap: 8px; padding: 8px; }
+  .drive-action { min-width: 70px; padding: 8px 5px; }
+}
+@media (max-width: 900px) and (orientation: landscape) {
+  .page-intro { height: 77px; padding-top: 16px; }
+  .page-intro h1 { font-size: 23px; }
+  .destination-grid { max-width: 640px; gap: 24px; margin-top: 0; }
+  .destination { min-height: 172px; gap: 8px; padding: 8px 15px 12px; }
+  .destination img, .atlas-destination img { height: 105px; width: auto; }
+  .destination h2 { padding: 6px; font-size: 18px; }
+  .download-strip { width: min(640px, 100%); min-height: 65px; margin-top: 18px; padding: 5px 16px; }
+  .download-strip > img { width: 50px; height: 50px; }
+  .download-strip > span { font-size: 19px; }
+  .site-footer { min-height: 40px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }

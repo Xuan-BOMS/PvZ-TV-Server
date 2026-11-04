@@ -239,7 +239,7 @@ public class ServerIntegrationTest {
         assertTrue(dashboard.contains("id=\"banSel\""));
         assertTrue(dashboard.contains("id=\"modeSel\""));
         assertTrue(dashboard.contains("id=\"deckTitle\""));
-        assertTrue(html.contains("data-almanac-src=\"/almanac/\""));
+        assertTrue(html.contains("class=\"destination atlas-destination\""));
         assertFalse(html.contains("gameModeSel"));
         assertFalse(html.contains("game_mode"));
         assertFalse(html.contains("bpSel"));
@@ -254,7 +254,7 @@ public class ServerIntegrationTest {
         assertTrue(almanac.contains("<title>植物图鉴 · PvZ TV</title>"));
         assertTrue(almanac.contains("V3215"));
         assertTrue(almanac.contains("window.PVZ_IMAGE_DATA"));
-        assertFalse(almanac.contains("github.io"));
+        assertTrue(almanac.contains("hostname.endsWith(\"github.io\")"));
         Files.writeString(directory.resolve("dashboard.html"), dashboard);
     }
 
