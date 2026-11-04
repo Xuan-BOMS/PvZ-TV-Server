@@ -876,6 +876,22 @@ window.PVZ_CATALOG = {
     104: { health: { value: 270, armor: 150 } },
     105: { health: { value: 300 } }
   },
+  // Normal chewing DPS is 100; multipliers follow Zombie::GetEatDamage().
+  // null marks units excluded from chewing by CheckIfPreyCaught(), plus graves.
+  zombieEatDpsBase: 100,
+  zombieEatProfiles: {
+    61: null,
+    72: null,
+    76: null,
+    78: null,
+    79: null,
+    91: null,
+    96: [{ multiplier: 2, state: "普通" }, { multiplier: 4, state: "暴怒" }],
+    99: null,
+    100: [{ multiplier: 1, state: "本体" }, { multiplier: 2, state: "僵尸狗" }],
+    103: null,
+    104: [{ multiplier: 2, state: "持铲" }, { multiplier: 1, state: "失铲" }]
+  },
   zombieSpeeds: {
     62: { value: "4.6–7.4", unit: "秒/格" },
     63: { value: "23–37", unit: "秒/格" },
@@ -1647,6 +1663,7 @@ function renderDetail() {
   } else {
     addStat(stats, "生命值", health ?? "未收录");
     if (zombieStats?.health?.armor) addStat(stats, "防具强度", zombieStats.health.armor);
+    addStat(stats, "每秒伤害", getZombieDps(card));
     if (zombieSpeed) addStat(stats, "速度", [zombieSpeed.value, zombieSpeed.unit].filter(Boolean).join(" "));
     if (zombieSpeed?.note) addStat(stats, "速度变化", zombieSpeed.note);
     if (zombieMound) {
@@ -1661,6 +1678,15 @@ function renderDetail() {
   document.getElementById("detail-attack").textContent = "";
   document.getElementById("detail-ability").textContent = getCardDescription(card);
   renderVariants(card);
+}
+
+function getZombieDps(card) {
+  const profile = catalog.zombieEatProfiles[card.id];
+  if (profile === null) return "—（不啃食）";
+  if (!profile) return `${catalog.zombieEatDpsBase}（啃食）`;
+  return profile.map(({ multiplier, state }) =>
+    `${formatNumber(catalog.zombieEatDpsBase * multiplier)}（${state}）`
+  ).join(" / ");
 }
 
 function getZombieCost(card) {
