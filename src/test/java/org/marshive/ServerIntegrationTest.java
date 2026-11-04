@@ -106,12 +106,174 @@ public class ServerIntegrationTest {
         }
     }
 
-    private Process startServer(int base, Path directory) throws IOException {
+    @Test public void roomNamesAreMaskedInListsJoinResponsesAndLogs() throws Exception {
+        for (boolean custom : new boolean[]{false, true}) {
+            int base = availableBase();
+            Path directory = Files.createTempDirectory(Path.of("target"), "server-room-names-").toAbsolutePath();
+            if (custom) {
+                Files.createDirectories(directory.resolve("words"));
+                Files.writeString(directory.resolve("words/custom.txt"), "\uFEFFtest,坏词\r\n");
+            }
+            Process process = startServer(base, directory, custom ? new String[]{"--sensitive-words-dir=words"} : new String[0]);
+            try {
+                awaitReady(base, process);
+                try (Socket host = connect(base); Socket viewer = connect(base); Socket otherHost = connect(base)) {
+                    // Malformed UTF-8 and line breaks must not turn into names or log entries.
+                    host.getOutputStream().write(createRoomCommand(new byte[]{(byte) 0xC3, 0x28}));
+                    assertEquals(1, frame(host, 0xFF).length);
+                    host.getOutputStream().write(createRoomCommand("bad\nname".getBytes(StandardCharsets.UTF_8)));
+                    assertEquals(1, frame(host, 0xFF).length);
+                    viewer.getOutputStream().write(2);
+                    assertArrayEquals(new byte[]{0}, frame(viewer, 0x82));
+
+                    String original = custom ? "[VS]ＴｅST坏词😊" : "[VS] Ｑｑ好友😊";
+                    String expected = custom ? "[VS]******😊" : "[VS] **好友😊";
+                    byte[] create = createRoomCommand(original.getBytes(StandardCharsets.UTF_8));
+                    // Exercise fragmented CREATE packets as well as the usual complete packet.
+                    host.getOutputStream().write(create, 0, 5);
+                    host.getOutputStream().write(create, 5, create.length - 5);
+                    int roomId = ByteBuffer.wrap(frame(host, 0x81)).getInt();
+                    viewer.getOutputStream().write(2);
+                    ByteBuffer list = ByteBuffer.wrap(frame(viewer, 0x82));
+                    assertEquals(1, Byte.toUnsignedInt(list.get()));
+                    assertEquals(roomId, list.getInt());
+                    list.get(); // flags
+                    assertEquals(3215, list.getInt());
+                    byte[] roomName = new byte[Byte.toUnsignedInt(list.get())];
+                    list.get(roomName);
+                    assertEquals(expected, new String(roomName, StandardCharsets.UTF_8));
+                    assertFalse(list.hasRemaining());
+
+                    viewer.getOutputStream().write(ByteBuffer.allocate(11).put((byte) 3).putInt(roomId)
+                            .putInt(3215).put((byte) 1).put((byte) 'G').array());
+                    byte[] joined = frame(viewer, 0x83);
+                    assertEquals(1, joined[0]);
+                    assertEquals(expected, new String(joined, 10, Byte.toUnsignedInt(joined[9]), StandardCharsets.UTF_8));
+
+                    String normal = "[COOP] 阳光好友😊";
+                    otherHost.getOutputStream().write(createRoomCommand(normal.getBytes(StandardCharsets.UTF_8)));
+                    frame(otherHost, 0x81);
+                    otherHost.getOutputStream().write(2);
+                    assertTrue(new String(frame(otherHost, 0x82), StandardCharsets.UTF_8).contains(normal));
+                }
+                String log = new String(Files.readAllBytes(directory.resolve("server.log")), StandardCharsets.UTF_8);
+                assertTrue(log, log.contains("[ROOM_NAME_FILTER] loaded"));
+                assertFalse(log, log.contains(custom ? "ＴｅST" : "Ｑｑ"));
+                assertFalse(log, log.contains("bad\nname"));
+                assertTrue(log, log.contains(custom ? "[VS]******" : "[VS] **"));
+            } finally {
+                process.destroyForcibly();
+                assertTrue(process.waitFor(10, TimeUnit.SECONDS));
+            }
+        }
+    }
+
+    @Test public void longNamesAreTruncatedAndPlayersCanStillCreateJoinSpectateAndPlay() throws Exception {
+        int base = availableBase();
+        Path directory = Files.createTempDirectory(Path.of("target"), "server-name-limits-").toAbsolutePath();
+        Files.createDirectories(directory.resolve("words"));
+        Files.writeString(directory.resolve("words/custom.txt"), "坏");
+        Process process = startServer(base, directory, "--sensitive-words-dir=words");
+        try {
+            awaitReady(base, process);
+            try (Socket host = connect(base); Socket guest = connect(base); Socket spectator = connect(base)) {
+                String roomName = "[COOP]阳光开心好朋";
+                host.getOutputStream().write(createRoomCommand("[COOP]阳光开心好朋友".getBytes(StandardCharsets.UTF_8)));
+                int roomId = ByteBuffer.wrap(frame(host, 0x81)).getInt();
+                assertEquals(1001, roomId);
+                guest.getOutputStream().write(2);
+                ByteBuffer rooms = ByteBuffer.wrap(frame(guest, 0x82));
+                assertEquals(1, rooms.get());
+                assertEquals(roomId, rooms.getInt());
+                rooms.get(); // flags
+                assertEquals(3215, rooms.getInt());
+                byte[] listedName = new byte[Byte.toUnsignedInt(rooms.get())];
+                rooms.get(listedName);
+                assertEquals(roomName, new String(listedName, StandardCharsets.UTF_8));
+                assertFalse(rooms.hasRemaining());
+                host.getOutputStream().write(new byte[]{0x0E, 1}); // Allow spectators.
+                frame(host, 0x8E);
+
+                byte[][] invalidNames = {
+                        "bad\nname".getBytes(StandardCharsets.UTF_8),
+                        new byte[]{(byte) 0xC3, 0x28}
+                };
+                for (int command : new int[]{3, 0x0F}) {
+                    Socket client = command == 3 ? guest : spectator;
+                    for (byte[] name : invalidNames) {
+                        client.getOutputStream().write(joinRoomCommand(command, roomId, name));
+                        assertArrayEquals(new byte[]{1}, frame(client, 0xFF));
+                    }
+                }
+                // Long names are accepted; the server publishes the retained prefix everywhere.
+                String guestName = "Abcdef123456";
+                guest.getOutputStream().write(joinRoomCommand(3, roomId, (guestName + "Extra").getBytes(StandardCharsets.UTF_8)));
+                byte[] joined = frame(guest, 0x83);
+                assertEquals(1, joined[0]);
+                assertEquals(roomName, new String(joined, 10, Byte.toUnsignedInt(joined[9]), StandardCharsets.UTF_8));
+                byte[] notification = frame(host, 0x84);
+                assertEquals(guestName, new String(notification, 5, Byte.toUnsignedInt(notification[4]), StandardCharsets.UTF_8));
+
+                String spectatorName = "阳光好友AB12";
+                spectator.getOutputStream().write(joinRoomCommand(0x0F, roomId, (spectatorName + "多余").getBytes(StandardCharsets.UTF_8)));
+                assertEquals(1, frame(spectator, 0x83)[0]);
+                byte[] list = frame(spectator, 0x8F);
+                assertEquals(1, list[4]);
+                assertEquals(spectatorName, new String(list, 6, Byte.toUnsignedInt(list[5]), StandardCharsets.UTF_8));
+
+                // Parsing must consume the full submitted name so later game commands still work.
+                host.getOutputStream().write(5);
+                byte[] epoch = frame(host, 0x85);
+                assertArrayEquals(epoch, frame(guest, 0x85));
+                byte[] ready = ByteBuffer.allocate(5).put((byte) 0x0B).put(epoch).array();
+                host.getOutputStream().write(ready);
+                guest.getOutputStream().write(ready);
+                assertArrayEquals(epoch, frame(host, 0x8B));
+                assertArrayEquals(epoch, frame(guest, 0x8B));
+                byte[] action = {27, 5, 1, 0, 0};
+                guest.getOutputStream().write(action);
+                assertArrayEquals(action, rawEvent(host));
+                host.getOutputStream().write(action);
+                assertArrayEquals(action, rawEvent(guest));
+            }
+        } catch (Throwable error) {
+            throw new AssertionError("Server log:\n" + Files.readString(directory.resolve("server.log")), error);
+        } finally {
+            process.destroyForcibly();
+            assertTrue(process.waitFor(10, TimeUnit.SECONDS));
+        }
+    }
+
+    private static byte[] joinRoomCommand(int command, int roomId, byte[] name) {
+        return ByteBuffer.allocate(10 + name.length).put((byte) command).putInt(roomId)
+                .putInt(3215).put((byte) name.length).put(name).array();
+    }
+
+    @Test public void missingConfiguredDictionaryPreventsServerStartup() throws Exception {
+        Path directory = Files.createTempDirectory(Path.of("target"), "server-missing-words-").toAbsolutePath();
+        Process process = startServer(availableBase(), directory, "--sensitive-words-dir=missing");
+        try {
+            assertTrue(process.waitFor(10, TimeUnit.SECONDS));
+            assertNotEquals(0, process.exitValue());
+            assertFalse(Files.readString(directory.resolve("server.log")).contains("NIO Game Server Started"));
+        } finally {
+            process.destroyForcibly();
+            process.waitFor(5, TimeUnit.SECONDS);
+        }
+    }
+
+    private static byte[] createRoomCommand(byte[] name) {
+        return ByteBuffer.allocate(6 + name.length).put((byte) 1).put((byte) name.length).put(name).putInt(3215).array();
+    }
+
+    private Process startServer(int base, Path directory, String... options) throws IOException {
         String java = new File(System.getProperty("java.home"), "bin/java").getPath();
         String classpath = Arrays.stream(System.getProperty("java.class.path").split(File.pathSeparator))
                 .map(p -> new File(p).getAbsolutePath()).reduce((a, b) -> a + File.pathSeparator + b).orElseThrow();
-        return new ProcessBuilder(java, "-Xmx64m", "-XX:+ExitOnOutOfMemoryError",
-                "-cp", classpath, ServerApp.class.getName(), "--base=" + base, "--shards=1", "--dashboard=true")
+        List<String> command = new ArrayList<>(List.of(java, "-Xmx64m", "-XX:+ExitOnOutOfMemoryError",
+                "-cp", classpath, ServerApp.class.getName(), "--base=" + base, "--shards=1", "--dashboard=true"));
+        command.addAll(Arrays.asList(options));
+        return new ProcessBuilder(command)
                 .directory(directory.toFile()).redirectErrorStream(true).redirectOutput(directory.resolve("server.log").toFile()).start();
     }
 

@@ -476,8 +476,14 @@ public class ClientHandler {
                 if (readBuf.remaining() < nameLen + 4) return false;
                 byte[] nb = new byte[nameLen];
                 readBuf.get(nb);
-                String roomName = new String(nb, StandardCharsets.UTF_8);
                 int clientVersion = readBuf.getInt();
+                String roomName;
+                try {
+                    roomName = StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(nb)).toString();
+                } catch (java.nio.charset.CharacterCodingException invalidName) {
+                    sendError(ERR_BAD_REQ);
+                    return true;
+                }
                 handleCreate(roomName, clientVersion);
                 return true;
             }
@@ -493,7 +499,13 @@ public class ClientHandler {
                 if (readBuf.remaining() < nameLen) return false;
                 byte[] nb = new byte[nameLen];
                 readBuf.get(nb);
-                String guestName = new String(nb, StandardCharsets.UTF_8);
+                String guestName;
+                try {
+                    guestName = StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(nb)).toString();
+                } catch (java.nio.charset.CharacterCodingException invalidName) {
+                    sendError(ERR_BAD_REQ);
+                    return true;
+                }
                 handleJoin(roomId, clientVersion, guestName);
                 return true;
             }
@@ -544,7 +556,13 @@ public class ClientHandler {
                 if (readBuf.remaining() < nameLen) return false;
                 byte[] nb = new byte[nameLen];
                 readBuf.get(nb);
-                String watcherName = new String(nb, StandardCharsets.UTF_8);
+                String watcherName;
+                try {
+                    watcherName = StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(nb)).toString();
+                } catch (java.nio.charset.CharacterCodingException invalidName) {
+                    sendError(ERR_BAD_REQ);
+                    return true;
+                }
                 handleJoinSpectate(roomId, clientVersion, watcherName);
                 return true;
             }
@@ -750,9 +768,14 @@ public class ClientHandler {
             sendError(ERR_NOT_ALLOWED);
             return;
         }
+        try {
+            currentRoom = rm.createRoom(roomName, this, clientVersion);
+        } catch (IllegalArgumentException invalidName) {
+            sendError(ERR_BAD_REQ);
+            return;
+        }
         protocolVersion = clientVersion;
-        playerName = roomName;
-        currentRoom = rm.createRoom(roomName, this, clientVersion);
+        playerName = currentRoom.getName();
         isHost = true;
 
         byte[] payload = new byte[8];
@@ -767,6 +790,12 @@ public class ClientHandler {
 
     private void handleJoin(int roomId, int clientVersion, String guestName) throws IOException {
         if (currentRoom != null) {
+            sendError(ERR_BAD_REQ);
+            return;
+        }
+        try {
+            guestName = PlayerNamePolicy.truncatePlayerName(guestName);
+        } catch (IllegalArgumentException invalidName) {
             sendError(ERR_BAD_REQ);
             return;
         }
@@ -874,6 +903,12 @@ public class ClientHandler {
 
     private void handleJoinSpectate(int roomId, int clientVersion, String watcherName) throws IOException {
         if (currentRoom != null) {
+            sendError(ERR_BAD_REQ);
+            return;
+        }
+        try {
+            watcherName = PlayerNamePolicy.truncatePlayerName(watcherName);
+        } catch (IllegalArgumentException invalidName) {
             sendError(ERR_BAD_REQ);
             return;
         }

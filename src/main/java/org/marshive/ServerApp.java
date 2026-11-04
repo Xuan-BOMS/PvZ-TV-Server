@@ -32,6 +32,7 @@ public class ServerApp {
         String replicateHost = "";
         int replicatePort = 0;
         int replicateBatch = 10;
+        String sensitiveWordsDirectory = null;
 
         for (String a : args) {
             if (a == null) continue;
@@ -51,6 +52,9 @@ public class ServerApp {
                 }
             } else if (a.startsWith("--replicate_batch=")) {
                 replicateBatch = parseIntSafe(a.substring("--replicate_batch=".length()), replicateBatch);
+            } else if (a.startsWith("--sensitive-words-dir=")) {
+                sensitiveWordsDirectory = a.substring("--sensitive-words-dir=".length()).trim();
+                if (sensitiveWordsDirectory.isEmpty()) throw new IllegalArgumentException("Sensitive-word directory is empty");
             }
         }
         if (args.length >= 1 && args[0] != null && !args[0].trim().startsWith("--")) {
@@ -90,6 +94,12 @@ public class ServerApp {
             throw new IllegalArgumentException("Probe2 port range overflow: " + lastProbePort2);
         }
 
+        // Load once before opening any port; share the read-only trie across all shards.
+        SensitiveWordFilter roomNameFilter = sensitiveWordsDirectory == null ? SensitiveWordFilter.bundled()
+                : SensitiveWordFilter.fromDirectory(java.nio.file.Path.of(sensitiveWordsDirectory));
+        System.out.println("[ROOM_NAME_FILTER] loaded " + roomNameFilter.wordCount() + " words from "
+                + (sensitiveWordsDirectory == null ? "bundled dictionary" : sensitiveWordsDirectory));
+
         System.out.println(">>> NIO Game Server Started on Ports: " +
                 basePort + " ~ " + lastPort +
                 " (base=" + basePort + ", shards=" + shardCount + ", probeBase1=" + probeBasePort + ", probeBase2=" + probeBasePort2 + ", metricsPorts=" + metricsBasePort + "~" + lastMetricsPort + ", dashboardPort=" + dashboardPort + ")");
@@ -99,7 +109,7 @@ public class ServerApp {
         Map<ServerSocketChannel, ShardBinding> listeners = new HashMap<>();
 
         for (int i = 0; i < shardCount; i++) {
-            rms[i] = new RoomManager(i);
+            rms[i] = new RoomManager(i, roomNameFilter);
             int port = basePort + i;
             int probePort = probeBasePort + i;
             int probePort2 = probeBasePort2 + i;
