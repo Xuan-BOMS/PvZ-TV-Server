@@ -647,6 +647,7 @@ body[data-category="zombies"] .stat-section, body[data-category="zombies"] .abil
             <div class="detail-headline-stats">
               <p><span id="detail-cost-label">阳光花费</span><b id="detail-cost-value">75</b></p>
               <p><span>恢复时间</span><b id="detail-recharge">7.5 秒</b></p>
+              <p><span>死斗恢复</span><b id="detail-sudden-death-recharge">2.5 秒</b></p>
             </div>
           </div>
           <div id="variant-list" class="variant-list" hidden></div>
@@ -736,6 +737,20 @@ window.PVZ_CATALOG = {
       34: "15 秒", 35: "7.5 秒", 36: "7.5 秒", 37: "30 秒", 39: "15 秒",
       200: "30 秒", 201: "7.5 秒", 202: "7.5 秒", 203: "30 秒", 204: "15 秒", 205: "30 秒", 206: "60 秒",
       207: "30 秒", 208: "30 秒", 209: "30 秒", 210: "7.5 秒"
+  },
+  suddenDeathRecharges: {
+    0: 2.5, 1: null, 2: 30, 3: 30, 4: 15, 5: 2.5, 6: 2.5, 7: 5,
+    8: 5, 9: null, 10: 2.5, 11: 10, 12: 10, 13: 2.5, 14: 30, 15: 30,
+    16: 2.5, 17: 15, 18: 5, 19: 10, 20: 30, 21: 10, 22: 2.5, 23: 30,
+    24: 10, 26: 5, 27: 2.5, 28: 2.5, 29: 5, 30: 30, 31: 2.5, 32: 5,
+    34: 5, 35: 2.5, 36: 2.5, 37: 10, 39: 5, 200: 15, 201: 2.5, 202: 2.5,
+    203: 10, 204: 5, 205: 30, 206: 30, 207: null, 208: 30, 209: 30, 210: 2.5,
+    61: null, 62: 5, 63: 30, 64: 10, 65: 10, 66: 10, 67: 10, 68: 5,
+    69: 15, 70: 10, 71: 10, 72: 20, 73: 5, 74: 10, 75: 20, 76: 10,
+    77: 10, 78: 20, 79: 20, 80: 10, 81: 10, 82: 5, 83: 10, 84: 10,
+    85: 10, 86: 2.5, 87: 10, 88: 10, 89: 10, 90: 10, 91: 5, 92: 10,
+    93: 5, 94: 10, 95: 10, 96: 5, 97: 10, 98: 10, 99: 20, 100: 10,
+    101: 10, 102: 10, 103: 10, 104: 10, 105: 10
   },
   dpsProfiles: {
     0: { damage: 20, interval: 1.5 },
@@ -1646,6 +1661,10 @@ function renderDetail() {
   document.getElementById("detail-recharge").textContent = isPlant
     ? getPlantRecharge(card)
     : catalog.zombieRecharges?.[card.id] ?? "未收录";
+  const suddenDeathRecharge = catalog.suddenDeathRecharges[card.id];
+  document.getElementById("detail-sudden-death-recharge").textContent = suddenDeathRecharge === null
+    ? "停用"
+    : suddenDeathRecharge === undefined ? "未收录" : `${formatNumber(suddenDeathRecharge)} 秒`;
 
   const stats = document.getElementById("stat-list");
   stats.replaceChildren();
