@@ -872,7 +872,7 @@ window.PVZ_CATALOG = {
     100: { health: { value: 500 } },
     101: { health: { value: 500 } },
     102: { health: { value: 270, armor: 100 } },
-    103: { health: { value: 500 } },
+    103: { health: { value: 500 }, damagePerSecond: 75, healingPerSecond: 10, attackInterval: "2 秒" },
     104: { health: { value: 270, armor: 150 } },
     105: { health: { value: 300 } }
   },
@@ -1663,7 +1663,10 @@ function renderDetail() {
   } else {
     addStat(stats, "生命值", health ?? "未收录");
     if (zombieStats?.health?.armor) addStat(stats, "防具强度", zombieStats.health.armor);
-    addStat(stats, "每秒伤害", getZombieDps(card));
+    const zombieDps = getZombieDps(card);
+    if (zombieDps !== null) addStat(stats, "每秒伤害", zombieDps);
+    if (zombieStats?.healingPerSecond !== undefined) addStat(stats, "每秒治疗", formatNumber(zombieStats.healingPerSecond));
+    if (zombieStats?.attackInterval) addStat(stats, "攻击间隔", zombieStats.attackInterval);
     if (zombieSpeed) addStat(stats, "速度", [zombieSpeed.value, zombieSpeed.unit].filter(Boolean).join(" "));
     if (zombieSpeed?.note) addStat(stats, "速度变化", zombieSpeed.note);
     if (zombieMound) {
@@ -1681,8 +1684,10 @@ function renderDetail() {
 }
 
 function getZombieDps(card) {
+  const damagePerSecond = catalog.zombieStats[card.id]?.damagePerSecond;
+  if (damagePerSecond !== undefined) return formatNumber(damagePerSecond);
   const profile = catalog.zombieEatProfiles[card.id];
-  if (profile === null) return "—（不啃食）";
+  if (profile === null) return null;
   if (!profile) return `${catalog.zombieEatDpsBase}（啃食）`;
   return profile.map(({ multiplier, state }) =>
     `${formatNumber(catalog.zombieEatDpsBase * multiplier)}（${state}）`
