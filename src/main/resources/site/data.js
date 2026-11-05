@@ -1,11 +1,12 @@
 (() => {
   const $ = selector => document.querySelector(selector);
+  const normalizeMode = value => ["DAY", "NIGHT", "POOL", "FOG"].includes(value) ? value : "DAY";
   const state = {
     lang: localStorage.getItem("pvz_lang") || "zh",
     side: localStorage.getItem("pvz_side") || "PLANT",
     extra: localStorage.getItem("pvz_extra_packet") || "true",
     ban: localStorage.getItem("pvz_ban_mode") || "true",
-    mode: localStorage.getItem("pvz_mode") || "DAY",
+    mode: normalizeMode(localStorage.getItem("pvz_mode")),
     theme: localStorage.getItem("pvz_theme") || "light",
     version: "all",
     names: new Map(),
@@ -15,8 +16,8 @@
   };
   const palette = ["#6b963c", "#d49931", "#7584ad", "#c45e35", "#42a09a", "#a1ad4c", "#aa7250", "#4d815d", "#cf8e51", "#8888a1"];
   const text = {
-    zh: { title:"对战大数据", version:"游戏版本", all:"全部版本", ban:"禁选模式", extra:"额外卡槽", off:"关闭", on:"开启", map:"地图", maps:["白天","黑夜","泳池白天","泳池黑夜","屋顶"], plant:"植物", zombie:"僵尸", deckTitle:"Top 10 卡组", cardTitle:"单卡统计", recent:"最近对局", time:"时间", winner:"胜方", duration:"时长", card:"卡牌", pick:"选取", banCol:"禁用", wins:"胜场", winrate:"胜率", pickrate:"选取率", banrate:"禁用率", plays:"对局", noData:"暂无数据", waiting:"等待对局数据", records:"条卡牌记录", lineups:"组卡组", loading:"加载中…", returnHome:"返回资料站首页", allLabel:"Top 10 对局", latest:"近期", auto:"新对局数据自动更新" },
-    en: { title:"Battle Data", version:"Game version", all:"All versions", ban:"Ban mode", extra:"Extra slot", off:"Off", on:"On", map:"Map", maps:["Day","Night","Pool day","Pool fog","Roof"], plant:"Plants", zombie:"Zombies", deckTitle:"Top 10 Decks", cardTitle:"Card Stats", recent:"Recent Matches", time:"Time", winner:"Winner", duration:"Duration", card:"Card", pick:"Picked", banCol:"Banned", wins:"Wins", winrate:"Win rate", pickrate:"Pick rate", banrate:"Ban rate", plays:"Plays", noData:"No data", waiting:"Waiting for match data", records:"card records", lineups:"deck lineups", loading:"Loading…", returnHome:"Back to home", allLabel:"Top 10 matches", latest:"LATEST", auto:"Live match data updates automatically" }
+    zh: { title:"对战大数据", version:"游戏版本", all:"全部版本", ban:"禁选模式", extra:"额外卡槽", off:"关闭", on:"开启", map:"地图", maps:["白天","黑夜","泳池白天","泳池黑夜"], plant:"植物", zombie:"僵尸", deckTitle:"Top 10 卡组", cardTitle:"单卡统计", recent:"最近对局", time:"时间", winner:"胜方", duration:"时长", card:"卡牌", pick:"选取", banCol:"禁用", wins:"胜场", winrate:"胜率", pickrate:"选取率", banrate:"禁用率", plays:"对局", noData:"暂无数据", waiting:"等待对局数据", records:"条卡牌记录", lineups:"组卡组", loading:"加载中…", returnHome:"返回资料站首页", allLabel:"Top 10 对局", latest:"近期", auto:"新对局数据自动更新" },
+    en: { title:"Battle Data", version:"Game version", all:"All versions", ban:"Ban mode", extra:"Extra slot", off:"Off", on:"On", map:"Map", maps:["Day","Night","Pool day","Pool fog"], plant:"Plants", zombie:"Zombies", deckTitle:"Top 10 Decks", cardTitle:"Card Stats", recent:"Recent Matches", time:"Time", winner:"Winner", duration:"Duration", card:"Card", pick:"Picked", banCol:"Banned", wins:"Wins", winrate:"Win rate", pickrate:"Pick rate", banrate:"Ban rate", plays:"Plays", noData:"No data", waiting:"Waiting for match data", records:"card records", lineups:"deck lineups", loading:"Loading…", returnHome:"Back to home", allLabel:"Top 10 matches", latest:"LATEST", auto:"Live match data updates automatically" }
   };
   const t = () => text[state.lang];
   const percent = value => `${(Number(value || 0) * 100).toFixed(1)}%`;
@@ -279,9 +280,10 @@
   $("#banSel").value = state.ban;
   $("#extraSel").value = state.extra;
   $("#modeSel").value = state.mode;
+  if (localStorage.getItem("pvz_mode") !== state.mode) localStorage.setItem("pvz_mode", state.mode);
   $("#banSel").addEventListener("change", event => { state.ban = event.target.value; persist("pvz_ban_mode", state.ban); });
   $("#extraSel").addEventListener("change", event => { state.extra = event.target.value; persist("pvz_extra_packet", state.extra); });
-  $("#modeSel").addEventListener("change", event => { state.mode = event.target.value; persist("pvz_mode", state.mode); });
+  $("#modeSel").addEventListener("change", event => { state.mode = normalizeMode(event.target.value); $("#modeSel").value = state.mode; persist("pvz_mode", state.mode); });
   $("#sidePlant").addEventListener("click", () => { if (state.side !== "PLANT") { state.side = "PLANT"; localStorage.setItem("pvz_side", state.side); labels(); refresh(); } });
   $("#sideZombie").addEventListener("click", () => { if (state.side !== "ZOMBIE") { state.side = "ZOMBIE"; localStorage.setItem("pvz_side", state.side); labels(); refresh(); } });
   $("#langBtn").addEventListener("click", () => { state.lang = state.lang === "zh" ? "en" : "zh"; localStorage.setItem("pvz_lang", state.lang); labels(); refresh(); });
@@ -328,10 +330,13 @@
     const map = { pvz_lang:"lang", pvz_side:"side", pvz_extra_packet:"extra", pvz_ban_mode:"ban", pvz_mode:"mode", pvz_theme:"theme" };
     const key = map[event.key];
     if (!key || event.newValue === null) return;
-    state[key] = event.newValue;
+    state[key] = key === "mode" ? normalizeMode(event.newValue) : event.newValue;
     if (key === "extra") $("#extraSel").value = state.extra;
     if (key === "ban") $("#banSel").value = state.ban;
-    if (key === "mode") $("#modeSel").value = state.mode;
+    if (key === "mode") {
+      $("#modeSel").value = state.mode;
+      if (state.mode !== event.newValue) localStorage.setItem("pvz_mode", state.mode);
+    }
     labels();
     applyTheme();
     refresh();

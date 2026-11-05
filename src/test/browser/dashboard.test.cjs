@@ -20,13 +20,19 @@ before(async () => {
 });
 after(async () => { await browser?.close(); });
 
-async function dashboard(t, { delayDecks = false, mixedProducers = false, emptyRoof = true } = {}) {
+async function dashboard(t, { delayDecks = false, mixedProducers = false, emptyMap = 'FOG', initialMode = null } = {}) {
   const page = await browser.newPage({ viewport: { width: 1366, height: 900 } });
   const errors = [];
+  const requestedMaps = [];
   page.on('pageerror', error => errors.push(error.message));
+  page.on('request', request => {
+    const url = new URL(request.url());
+    if (['/api/top-decks', '/api/card-stats'].includes(url.pathname)) requestedMaps.push(url.searchParams.get('mode'));
+  });
   t.after(async () => { await page.close(); assert.deepEqual(errors, []); });
   let release;
   const gate = new Promise(resolve => { release = resolve; });
+  if (initialMode !== null) await page.addInitScript(mode => localStorage.setItem('pvz_mode', mode), initialMode);
   await page.addInitScript(() => {
     const original = CanvasRenderingContext2D.prototype.fillText;
     CanvasRenderingContext2D.prototype.fillText = function (text, ...args) {
@@ -52,7 +58,7 @@ async function dashboard(t, { delayDecks = false, mixedProducers = false, emptyR
       const ids = zombie ? [61, 62, 63, 64, 65, 91] : mixedProducers ? [0, 1, 9, 2, 3, 5] : [0, night ? 9 : 1, 2, 3, 4, 5];
       if (url.searchParams.get('extra_packet') === 'false') ids.pop();
       const plays = url.searchParams.get('netplay_version') === '3215' ? [9, 5] : [42, 72];
-      payload = { total_plays: 120, items: emptyRoof && url.searchParams.get('mode') === 'ROOF' ? [] : plays.map((count, index) => ({
+      payload = { total_plays: 120, items: url.searchParams.get('mode') === emptyMap ? [] : plays.map((count, index) => ({
         deck_ids: (index ? ids.slice().reverse() : ids).join('|'),
         core_zh: zombie ? '路障僵尸铁桶僵尸' : '寒冰射手坚果',
         core_en: zombie ? 'Conehead Zombie + Buckethead Zombie' : 'Snow Pea + Wall-nut',
@@ -69,7 +75,7 @@ async function dashboard(t, { delayDecks = false, mixedProducers = false, emptyR
     return route.fulfill({ status: 204 });
   });
   await page.goto('http://dashboard.test/data/');
-  return { page, release };
+  return { page, release, requestedMaps };
 }
 
 async function waitForDecks(page, total) {
@@ -117,7 +123,7 @@ test('filter changes, empty recovery, language and live updates redraw complete 
   await waitForDecks(page, 114);
   await page.selectOption('#versionSel', '3215');
   await waitForDecks(page, 14);
-  await page.selectOption('#modeSel', 'ROOF');
+  await page.selectOption('#modeSel', 'FOG');
   await page.waitForSelector('.deck-empty');
   assert.equal(await page.locator('#pie').isVisible(), false);
   await page.selectOption('#modeSel', 'DAY');
@@ -144,16 +150,41 @@ test('filter changes, empty recovery, language and live updates redraw complete 
 });
 
 test('day and night maps hide only their default producer and preserve statistics', { timeout: 30000 }, async t => {
-  const { page } = await dashboard(t, { mixedProducers: true, emptyRoof: false });
+  const { page } = await dashboard(t, { mixedProducers: true, emptyMap: null });
   await waitForDecks(page, 114);
   const originalStats = await page.locator('.deck-meta').allTextContents();
-  for (const [map, retainedProducer] of [['NIGHT', '向日葵'], ['POOL', '阳光菇'], ['FOG', '向日葵'], ['ROOF', '阳光菇'], ['DAY', '阳光菇']]) {
+  for (const [map, retainedProducer] of [['NIGHT', '向日葵'], ['POOL', '阳光菇'], ['FOG', '向日葵'], ['DAY', '阳光菇']]) {
     await page.selectOption('#modeSel', map);
     const expected = ['豌豆射手', retainedProducer, '樱桃炸弹', '坚果', '寒冰射手'];
     await page.waitForFunction(expected => JSON.stringify([...document.querySelectorAll('.deck-row:first-child .deck-card')].map(image => image.alt)) === JSON.stringify(expected), expected);
     assert.deepEqual(await page.locator('.deck-meta').allTextContents(), originalStats);
     await waitForDecks(page, 114);
   }
+});
+
+test('retired roof selection falls back to day on startup and cross-tab updates', { timeout: 15000 }, async t => {
+  const { page, requestedMaps } = await dashboard(t, { initialMode: 'ROOF' });
+  await waitForDecks(page, 114);
+  assert.deepEqual(await page.locator('#modeSel option').evaluateAll(options => options.map(option => option.value)), ['DAY', 'NIGHT', 'POOL', 'FOG']);
+  assert.equal(await page.locator('#modeSel').inputValue(), 'DAY');
+  assert.equal(await page.evaluate(() => localStorage.getItem('pvz_mode')), 'DAY');
+  assert(requestedMaps.length > 0 && requestedMaps.every(mode => mode === 'DAY'));
+  await page.selectOption('#modeSel', 'NIGHT');
+  await page.waitForFunction(() => document.querySelector('.deck-row:first-child .deck-cards').children.length === 5);
+  const dayResponse = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.pathname === '/api/top-decks' && url.searchParams.get('mode') === 'DAY';
+  });
+  await page.evaluate(() => {
+    localStorage.setItem('pvz_mode', 'ROOF');
+    window.dispatchEvent(new StorageEvent('storage', { key: 'pvz_mode', newValue: 'ROOF' }));
+  });
+  await dayResponse;
+  assert.equal(await page.locator('#modeSel').inputValue(), 'DAY');
+  assert.equal(await page.evaluate(() => localStorage.getItem('pvz_mode')), 'DAY');
+  await page.click('#langBtn');
+  assert.deepEqual(await page.locator('#modeSel option').allTextContents(), ['Day', 'Night', 'Pool day', 'Pool fog']);
+  assert(!requestedMaps.includes('ROOF'));
 });
 
 test('deck images and inline statistics fit desktop and mobile in both languages', { timeout: 30000 }, async t => {
