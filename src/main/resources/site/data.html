@@ -6,9 +6,9 @@
     <meta name="theme-color" content="#28422e">
     <meta name="description" content="PvZ TV 对战统计：卡组使用趋势、单卡表现与近期对局。">
     <title>对战大数据</title>
-    <link rel="stylesheet" href="/site/data.css?v=pvz-release-20261105-3">
+    <link rel="stylesheet" href="/site/data.css?v=pvz-release-20261106-1">
     <link rel="stylesheet" href="/site/common.css?v=pvz-release-20261105-3">
-    <script src="/site/data.js?v=pvz-release-20261105-3" defer></script>
+    <script src="/site/data.js?v=pvz-release-20261106-1" defer></script>
   </head>
   <body>
     <header class="global-header">
@@ -27,16 +27,10 @@
         <label class="filter-control"><span id="mapLabel">地图</span><select id="modeSel"><option value="DAY">白天</option><option value="NIGHT">黑夜</option><option value="POOL">泳池白天</option><option value="FOG">泳池黑夜</option><option value="ROOF">屋顶</option></select></label>
         <div class="side-switch" role="group" aria-label="对战阵营"><button id="sidePlant" type="button" aria-pressed="true">植物</button><button id="sideZombie" type="button" aria-pressed="false">僵尸</button></div>
       </section>
-      <section class="metric-row" aria-label="筛选统计摘要">
-        <div class="metric-item"><span class="metric-icon matches" aria-hidden="true"></span><span class="metric-text"><small id="metricMatchesLabel">筛选对局</small><strong id="metricMatches">—</strong></span></div>
-        <div class="metric-item"><span class="metric-icon winrate" aria-hidden="true"></span><span class="metric-text"><small id="metricWinLabel">Top 10 卡组平均胜率</small><strong id="metricWin">—</strong></span></div>
-        <div class="metric-item"><span class="metric-icon deck" aria-hidden="true"></span><span class="metric-text"><small id="metricDeckLabel">热门核心</small><strong id="metricDeck">—</strong></span></div>
-        <p id="summaryNote">统计来自已收录对局</p>
-      </section>
       <section class="stats-grid" aria-label="对战数据详情">
         <article id="deckSection" class="data-section deck-section">
           <div class="section-heading"><div><p class="section-kicker">POPULAR LINEUPS</p><h2 id="deckTitle">Top 10 卡组</h2></div><span id="deckCount" class="section-count">—</span></div>
-          <div class="deck-content"><div class="chart-wrap"><canvas id="pie" width="300" height="300" role="img" aria-label="Top 10 卡组使用次数图表"></canvas><p id="chartEmpty" hidden>暂无数据</p></div><ol id="deckList" class="deck-list" aria-label="卡组排行"></ol></div>
+          <div class="deck-content"><div class="chart-wrap"><canvas id="pie" hidden width="300" height="300" role="img" aria-label="Top 10 卡组使用次数图表"></canvas></div><ol id="deckList" class="deck-list" aria-label="卡组排行"></ol></div>
         </article>
         <article id="cardSection" class="data-section card-section">
           <div class="section-heading"><div><p class="section-kicker">SEED PERFORMANCE</p><h2 id="cardTitle">单卡统计</h2></div><span id="cardCount" class="section-count">—</span></div>

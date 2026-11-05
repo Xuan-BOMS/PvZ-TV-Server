@@ -10,12 +10,13 @@
     version: "all",
     names: new Map(),
     decks: [],
+    activeDeck: "",
     request: 0
   };
   const palette = ["#6b963c", "#d49931", "#7584ad", "#c45e35", "#42a09a", "#a1ad4c", "#aa7250", "#4d815d", "#cf8e51", "#8888a1"];
   const text = {
-    zh: { title:"对战大数据", version:"游戏版本", all:"全部版本", ban:"禁选模式", extra:"额外卡槽", off:"关闭", on:"开启", map:"地图", maps:["白天","黑夜","泳池白天","泳池黑夜","屋顶"], plant:"植物", zombie:"僵尸", deckTitle:"Top 10 卡组", cardTitle:"单卡统计", recent:"最近对局", time:"时间", winner:"胜方", duration:"时长", card:"卡牌", pick:"选取", banCol:"禁用", wins:"胜场", winrate:"胜率", pickrate:"选取率", banrate:"禁用率", matches:"筛选对局", average:"Top 10 卡组平均胜率", core:"热门核心", noData:"暂无数据", waiting:"等待对局数据", summary:"统计来自已收录对局", records:"条卡牌记录", lineups:"组卡组", loading:"加载中…", returnHome:"返回资料站首页", allLabel:"总对局", latest:"近期", auto:"新对局数据自动更新" },
-    en: { title:"Battle Data", version:"Game version", all:"All versions", ban:"Ban mode", extra:"Extra slot", off:"Off", on:"On", map:"Map", maps:["Day","Night","Pool day","Pool fog","Roof"], plant:"Plants", zombie:"Zombies", deckTitle:"Top 10 Decks", cardTitle:"Card Stats", recent:"Recent Matches", time:"Time", winner:"Winner", duration:"Duration", card:"Card", pick:"Picked", banCol:"Banned", wins:"Wins", winrate:"Win rate", pickrate:"Pick rate", banrate:"Ban rate", matches:"Filtered matches", average:"Top 10 average win rate", core:"Popular core", noData:"No data", waiting:"Waiting for match data", summary:"Statistics from recorded matches", records:"card records", lineups:"deck lineups", loading:"Loading…", returnHome:"Back to home", allLabel:"Matches", latest:"LATEST", auto:"Live match data updates automatically" }
+    zh: { title:"对战大数据", version:"游戏版本", all:"全部版本", ban:"禁选模式", extra:"额外卡槽", off:"关闭", on:"开启", map:"地图", maps:["白天","黑夜","泳池白天","泳池黑夜","屋顶"], plant:"植物", zombie:"僵尸", deckTitle:"Top 10 卡组", cardTitle:"单卡统计", recent:"最近对局", time:"时间", winner:"胜方", duration:"时长", card:"卡牌", pick:"选取", banCol:"禁用", wins:"胜场", winrate:"胜率", pickrate:"选取率", banrate:"禁用率", plays:"对局", noData:"暂无数据", waiting:"等待对局数据", records:"条卡牌记录", lineups:"组卡组", loading:"加载中…", returnHome:"返回资料站首页", allLabel:"Top 10 对局", latest:"近期", auto:"新对局数据自动更新" },
+    en: { title:"Battle Data", version:"Game version", all:"All versions", ban:"Ban mode", extra:"Extra slot", off:"Off", on:"On", map:"Map", maps:["Day","Night","Pool day","Pool fog","Roof"], plant:"Plants", zombie:"Zombies", deckTitle:"Top 10 Decks", cardTitle:"Card Stats", recent:"Recent Matches", time:"Time", winner:"Winner", duration:"Duration", card:"Card", pick:"Picked", banCol:"Banned", wins:"Wins", winrate:"Win rate", pickrate:"Pick rate", banrate:"Ban rate", plays:"Plays", noData:"No data", waiting:"Waiting for match data", records:"card records", lineups:"deck lineups", loading:"Loading…", returnHome:"Back to home", allLabel:"Top 10 matches", latest:"LATEST", auto:"Live match data updates automatically" }
   };
   const t = () => text[state.lang];
   const percent = value => `${(Number(value || 0) * 100).toFixed(1)}%`;
@@ -53,10 +54,6 @@
     $("#deckTitle").textContent = `${state.side === "PLANT" ? words.plant : words.zombie} ${words.deckTitle}`;
     $("#cardTitle").textContent = words.cardTitle;
     $("#recentTitle").textContent = words.recent;
-    $("#metricMatchesLabel").textContent = words.matches;
-    $("#metricWinLabel").textContent = words.average;
-    $("#metricDeckLabel").textContent = words.core;
-    $("#summaryNote").textContent = words.summary;
     const cardHeaders = [words.card, words.pick, ...(state.ban === "true" ? [words.banCol] : []), words.wins, words.winrate, words.pickrate, ...(state.ban === "true" ? [words.banrate] : [])];
     $("#cards thead tr").querySelectorAll("th").forEach((cell, index) => cell.textContent = cardHeaders[index] || "");
     $("#recentThTime").textContent = words.time;
@@ -87,20 +84,15 @@
     return response.json();
   }
 
-  function renderDecks(decks, total) {
+  function renderDecks(decks) {
     const list = $("#deckList");
     const chart = $("#pie");
-    const empty = $("#chartEmpty");
     const content = $(".deck-content");
     list.replaceChildren();
     $("#deckCount").textContent = `${decks.length} ${t().lineups}`;
     if (!decks.length) {
-      $("#metricMatches").textContent = Number(total || 0).toLocaleString();
-      $("#metricWin").textContent = "—";
-      $("#metricDeck").textContent = "—";
       content.classList.add("is-empty");
       chart.hidden = true;
-      empty.hidden = true;
       const item = document.createElement("li");
       item.className = "deck-empty";
       item.textContent = t().noData;
@@ -109,40 +101,46 @@
     }
     content.classList.remove("is-empty");
     chart.hidden = false;
-    empty.hidden = true;
-    const plays = decks.map(item => Number(item.plays || 0));
-    const grandTotal = plays.reduce((sum, value) => sum + value, 0);
-    const segments = [];
-    let angle = 0;
     decks.forEach((deck, index) => {
-      const nextAngle = angle + (grandTotal ? plays[index] / grandTotal * 360 : 0);
-      segments.push(`${palette[index]} ${angle}deg ${nextAngle}deg`);
-      angle = nextAngle;
       const row = document.createElement("li");
       row.className = "deck-row";
+      row.dataset.deckId = deck.deck_ids;
+      row.tabIndex = 0;
       const name = document.createElement("span");
       name.className = "deck-core-name";
       const rank = document.createElement("b");
       rank.className = "deck-rank";
       rank.textContent = String(index + 1).padStart(2, "0");
       const core = state.lang === "zh" ? deck.core_zh : deck.core_en;
-      const fallback = deck.deck_ids.split("|").slice(0, 3).map(id => state.names.get(Number(id))?.[state.lang === "zh" ? "zh" : "en"]).filter(Boolean).join(" + ");
+      const ids = (deck.deck_ids || "").split("|").filter(Boolean);
+      const names = ids.map(id => cardName({ seed_type: id }));
+      const fallback = names.slice(0, 2).join(" + ");
       name.append(rank, document.createTextNode(core || fallback || t().noData));
       const meta = document.createElement("span");
       meta.className = "deck-meta";
-      meta.textContent = `${Number(deck.plays || 0).toLocaleString()} · ${percent(deck.win_rate)}`;
+      meta.textContent = `${t().plays}: ${Number(deck.plays || 0).toLocaleString()} · ${t().winrate}: ${percent(deck.win_rate)}`;
+      const cards = document.createElement("span");
+      cards.className = "deck-cards";
+      cards.textContent = names.join(" | ");
       const marker = document.createElement("i");
       marker.className = "deck-marker";
       marker.style.background = palette[index];
-      row.append(marker, name, meta);
+      row.append(marker, name, meta, cards);
+      row.addEventListener("mouseenter", () => highlightDeck(deck.deck_ids));
+      row.addEventListener("mouseleave", () => highlightDeck(""));
+      row.addEventListener("focus", () => highlightDeck(deck.deck_ids));
+      row.addEventListener("blur", () => highlightDeck(""));
       list.append(row);
     });
-    chart.style.setProperty("--chart-segments", segments.join(", "));
-    chart.setAttribute("aria-label", `${t().deckTitle}: ${decks.length}, ${Number(total || grandTotal).toLocaleString()} ${t().allLabel.toLowerCase()}`);
-    const rate = decks.reduce((sum, deck) => sum + Number(deck.plays || 0) * Number(deck.win_rate || 0), 0) / (grandTotal || 1);
-    $("#metricWin").textContent = grandTotal ? percent(rate) : "—";
-    $("#metricDeck").textContent = decks[0] ? (state.lang === "zh" ? decks[0].core_zh || "—" : decks[0].core_en || "—") : "—";
-    $("#metricDeck").title = $("#metricDeck").textContent;
+    const total = decks.reduce((sum, deck) => sum + Number(deck.plays || 0), 0);
+    chart.setAttribute("aria-label", `${t().allLabel}: ${total.toLocaleString()}`);
+    drawDonut();
+  }
+
+  function highlightDeck(id) {
+    state.activeDeck = id;
+    $("#deckList").querySelectorAll(".deck-row").forEach(row => row.classList.toggle("active", row.dataset.deckId === id));
+    drawDonut();
   }
 
   function renderCards(items) {
@@ -235,9 +233,6 @@
     const params = parameters();
     const query = params.toString();
     const recentQuery = new URLSearchParams({ netplay_version: state.version }).toString();
-    $("#metricMatches").textContent = "…";
-    $("#metricWin").textContent = "…";
-    $("#metricDeck").textContent = "…";
     const result = await Promise.allSettled([
       json(`/api/top-decks?${query}`),
       json(`/api/card-stats?${query}`),
@@ -246,7 +241,8 @@
     if (request !== state.request) return;
     const decks = result[0].status === "fulfilled" ? result[0].value : { items: [], total_plays: 0 };
     state.decks = decks.items || [];
-    renderDecks(state.decks, decks.total_plays || 0);
+    state.activeDeck = "";
+    renderDecks(state.decks);
     renderCards(result[1].status === "fulfilled" ? result[1].value.items || [] : []);
     renderRecent(result[2].status === "fulfilled" ? result[2].value.items || [] : []);
   }
@@ -292,10 +288,12 @@
       ctx.arc(size / 2, size / 2, size * .46, start, end);
       ctx.arc(size / 2, size / 2, size * .28, end, start, true);
       ctx.closePath();
+      ctx.globalAlpha = !state.activeDeck || state.activeDeck === deck.deck_ids ? 1 : .25;
       ctx.fillStyle = palette[index];
       ctx.fill();
       start = end;
     });
+    ctx.globalAlpha = 1;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = state.theme === "dark" ? "#f3edda" : "#29382c";
@@ -320,7 +318,6 @@
     applyTheme();
     refresh();
   });
-  $("#themeBtn").addEventListener("click", drawDonut);
   applyTheme();
   labels();
   json("/api/seed-names").then(payload => {
