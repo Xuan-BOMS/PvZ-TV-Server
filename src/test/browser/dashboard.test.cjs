@@ -20,7 +20,7 @@ before(async () => {
 });
 after(async () => { await browser?.close(); });
 
-async function dashboard(t, { delayDecks = false, mixedProducers = false, emptyMap = 'FOG', initialMode = null } = {}) {
+async function dashboard(t, { delayDecks = false, mixedProducers = false, emptyMap = 'FOG', initialMode = null, deckCount = 2, cardCount = 1 } = {}) {
   const page = await browser.newPage({ viewport: { width: 1366, height: 900 } });
   const errors = [];
   const requestedMaps = [];
@@ -58,19 +58,20 @@ async function dashboard(t, { delayDecks = false, mixedProducers = false, emptyM
       const ids = zombie ? [61, 62, 63, 64, 65, 91] : mixedProducers ? [0, 1, 9, 2, 3, 5] : [0, night ? 9 : 1, 2, 3, 4, 5];
       if (url.searchParams.get('extra_packet') === 'false') ids.pop();
       const plays = url.searchParams.get('netplay_version') === '3215' ? [9, 5] : [42, 72];
-      payload = { total_plays: 120, items: url.searchParams.get('mode') === emptyMap ? [] : plays.map((count, index) => ({
+      const counts = Array.from({ length: deckCount }, (_, index) => plays[index % plays.length]);
+      payload = { total_plays: 120, items: url.searchParams.get('mode') === emptyMap ? [] : counts.map((count, index) => ({
         deck_ids: (index ? ids.slice().reverse() : ids).join('|'),
         core_zh: zombie ? '路障僵尸铁桶僵尸' : '寒冰射手坚果',
         core_en: zombie ? 'Conehead Zombie + Buckethead Zombie' : 'Snow Pea + Wall-nut',
         plays: count, wins: Math.round(count * .45), win_rate: Math.round(count * .45) / count
       })) };
-    } else if (url.pathname === '/api/card-stats') payload = { items: [{ seed_type: 5, picked: 6, banned: 11, won: 5, win_rate: 5 / 6, pick_rate: .05, ban_rate: 11 / 120 }] };
+    } else if (url.pathname === '/api/card-stats') payload = { items: Array.from({ length: cardCount }, () => ({ seed_type: 5, picked: 6, banned: 11, won: 5, win_rate: 5 / 6, pick_rate: .05, ban_rate: 11 / 120 })) };
     else if (url.pathname === '/api/recent-matches') payload = { items: [] };
     if (payload) return route.fulfill({ json: payload });
     const file = { '/data/': 'data.html', '/site/data.js': 'data.js', '/site/data.css': 'data.css', '/site/common.css': 'common.css' }[url.pathname];
     if (file) return route.fulfill({ body: await fs.readFile(path.join(site, file)), contentType: file.endsWith('.js') ? 'text/javascript' : file.endsWith('.css') ? 'text/css' : 'text/html' });
-    if (/^\/assets\/cards\/SEED_PACKET_\d+(?:_MOUND_LEVEL_0)?\.PNG$/.test(url.pathname)) {
-      return route.fulfill({ body: await fs.readFile(path.join(site, '..', url.pathname.slice(1))), contentType: 'image/png' });
+    if (/^\/assets\/cards\/SEED_PACKET_\d+(?:_MOUND_LEVEL_0)?\.webp$/.test(url.pathname)) {
+      return route.fulfill({ body: await fs.readFile(path.join(site, '..', url.pathname.slice(1))), contentType: 'image/webp' });
     }
     return route.fulfill({ status: 204 });
   });
@@ -107,6 +108,7 @@ test('ranked decks show card art without the default producer', { timeout: 15000
   assert.equal(await page.locator('.deck-row').first().locator('.deck-cards').textContent(), '');
   await page.waitForFunction(() => [...document.querySelectorAll('.deck-row:first-child .deck-card')].every(image => image.complete && image.naturalWidth > 0));
   const before = await page.locator('#pie').evaluate(canvas => canvas.toDataURL());
+  assert.equal(await page.locator('.deck-row').first().locator('.deck-card').first().getAttribute('src'), '/assets/cards/SEED_PACKET_00.webp?v=pvz-release-20261106-5');
   await page.locator('.deck-row').first().focus();
   assert.notEqual(await page.locator('#pie').evaluate(canvas => canvas.toDataURL()), before);
   await page.locator('#versionSel').focus();
@@ -114,8 +116,39 @@ test('ranked decks show card art without the default producer', { timeout: 15000
   await page.click('#sideZombie');
   await page.waitForFunction(() => document.querySelector('.deck-card')?.alt === '普通僵尸');
   assert.equal(await page.locator('.deck-card[alt="墓碑"]').count(), 0);
-  assert.equal(await page.locator('.deck-row').first().locator('.deck-card').last().getAttribute('src'), '/assets/cards/SEED_PACKET_91_MOUND_LEVEL_0.PNG');
+  assert.equal(await page.locator('.deck-row').first().locator('.deck-card').last().getAttribute('src'), '/assets/cards/SEED_PACKET_91_MOUND_LEVEL_0.webp?v=pvz-release-20261106-5');
   await page.waitForFunction(() => [...document.querySelectorAll('.deck-row:first-child .deck-card')].every(image => image.complete && image.naturalWidth > 0));
+});
+
+test('deck and card stat images load as their own scroll containers approach them', { timeout: 20000 }, async t => {
+  const { page } = await dashboard(t, { deckCount: 10, cardCount: 44 });
+  await page.waitForFunction(() => document.querySelectorAll('.deck-row').length === 10 && document.querySelectorAll('#cards tbody tr').length === 44);
+  await page.waitForFunction(() => [...document.querySelectorAll('.deck-row:first-child .deck-card')].every(image => image.complete && image.naturalWidth > 0));
+  await page.waitForFunction(() => [...document.querySelectorAll('#cards tbody tr:first-child .seed-thumb')].every(image => image.complete && image.naturalWidth > 0));
+  assert(await page.locator('.deck-row:last-child .deck-card').evaluateAll(images => images.every(image => !image.hasAttribute('src'))));
+  assert.equal(await page.locator('#cards tbody tr:last-child .seed-thumb').getAttribute('src'), null);
+
+  await page.locator('.deck-list').evaluate(async list => {
+    const step = Math.max(80, Math.floor(list.clientHeight / 4));
+    for (let top = step; top <= list.scrollHeight; top += step) {
+      list.scrollTop = top;
+      await new Promise(requestAnimationFrame);
+    }
+    list.scrollTop = list.scrollHeight;
+  });
+  await page.waitForFunction(() => [...document.querySelectorAll('.deck-card')].every(image => image.complete && image.naturalWidth > 0));
+  await page.locator('#cards').evaluate(async table => {
+    const scroller = table.closest('.table-wrap');
+    const step = Math.max(80, Math.floor(scroller.clientHeight / 4));
+    for (let top = step; top <= scroller.scrollHeight; top += step) {
+      scroller.scrollTop = top;
+      await new Promise(requestAnimationFrame);
+    }
+    scroller.scrollTop = scroller.scrollHeight;
+  });
+  await page.waitForFunction(() => {
+    return [...document.querySelectorAll('#cards tbody .seed-thumb')].every(image => image.complete && image.naturalWidth > 0);
+  });
 });
 
 test('filter changes, empty recovery, language and live updates redraw complete decks', { timeout: 30000 }, async t => {
