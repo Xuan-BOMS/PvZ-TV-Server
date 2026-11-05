@@ -61,6 +61,9 @@ async function dashboard(t, { delayDecks = false } = {}) {
     if (payload) return route.fulfill({ json: payload });
     const file = { '/data/': 'data.html', '/site/data.js': 'data.js', '/site/data.css': 'data.css', '/site/common.css': 'common.css' }[url.pathname];
     if (file) return route.fulfill({ body: await fs.readFile(path.join(site, file)), contentType: file.endsWith('.js') ? 'text/javascript' : file.endsWith('.css') ? 'text/css' : 'text/html' });
+    if (/^\/assets\/cards\/SEED_PACKET_\d+(?:_MOUND_LEVEL_0)?\.PNG$/.test(url.pathname)) {
+      return route.fulfill({ body: await fs.readFile(path.join(site, '..', url.pathname.slice(1))), contentType: 'image/png' });
+    }
     return route.fulfill({ status: 204 });
   });
   await page.goto('http://dashboard.test/data/');
@@ -92,12 +95,18 @@ test('delayed first response paints the chart without resizing', { timeout: 1500
 test('each ranked deck includes every card, including the producer', { timeout: 15000 }, async t => {
   const { page } = await dashboard(t);
   await page.waitForSelector('#deckList .deck-row');
-  assert.equal(await page.locator('.deck-row').first().locator('.deck-cards').textContent(), '豌豆射手 | 向日葵 | 樱桃炸弹 | 坚果 | 土豆地雷 | 寒冰射手');
+  assert.deepEqual(await page.locator('.deck-row').first().locator('.deck-card').evaluateAll(images => images.map(image => image.alt)), ['豌豆射手', '向日葵', '樱桃炸弹', '坚果', '土豆地雷', '寒冰射手']);
+  assert.equal(await page.locator('.deck-row').first().locator('.deck-cards').textContent(), '');
+  await page.waitForFunction(() => [...document.querySelectorAll('.deck-row:first-child .deck-card')].every(image => image.complete && image.naturalWidth > 0));
   const before = await page.locator('#pie').evaluate(canvas => canvas.toDataURL());
   await page.locator('.deck-row').first().focus();
   assert.notEqual(await page.locator('#pie').evaluate(canvas => canvas.toDataURL()), before);
   await page.locator('#versionSel').focus();
   assert.equal(await page.locator('#pie').evaluate(canvas => canvas.toDataURL()), before);
+  await page.click('#sideZombie');
+  await page.waitForFunction(() => document.querySelector('.deck-card')?.alt === '普通僵尸');
+  assert.equal(await page.locator('.deck-row').first().locator('.deck-card').last().getAttribute('src'), '/assets/cards/SEED_PACKET_91_MOUND_LEVEL_0.PNG');
+  await page.waitForFunction(() => [...document.querySelectorAll('.deck-row:first-child .deck-card')].every(image => image.complete && image.naturalWidth > 0));
 });
 
 test('filter changes, empty recovery, language and live updates redraw complete decks', { timeout: 30000 }, async t => {
@@ -111,15 +120,15 @@ test('filter changes, empty recovery, language and live updates redraw complete 
   await page.selectOption('#modeSel', 'DAY');
   await waitForDecks(page, 14);
   await page.selectOption('#extraSel', 'false');
-  await page.waitForFunction(() => document.querySelector('.deck-cards').textContent.split(' | ').length === 5);
+  await page.waitForFunction(() => document.querySelectorAll('.deck-row:first-child .deck-card').length === 5);
   await page.click('#sideZombie');
-  await page.waitForFunction(() => document.querySelector('.deck-cards').textContent.startsWith('普通僵尸'));
+  await page.waitForFunction(() => document.querySelector('.deck-card')?.alt === '普通僵尸');
   await page.click('#langBtn');
-  await page.waitForFunction(() => document.querySelector('.deck-cards').textContent.startsWith('Zombie | Flag Zombie'));
+  await page.waitForFunction(() => document.querySelector('.deck-card')?.alt === 'Zombie');
   assert.equal(await page.locator('#pie').getAttribute('data-drawn-label'), 'Top 10 matches');
-  const lightColor = await page.locator('.deck-cards').first().evaluate(el => getComputedStyle(el).color);
+  const lightColor = await page.locator('.deck-core-name').first().evaluate(el => getComputedStyle(el).color);
   await page.click('#themeBtn');
-  assert.notEqual(await page.locator('.deck-cards').first().evaluate(el => getComputedStyle(el).color), lightColor);
+  assert.notEqual(await page.locator('.deck-core-name').first().evaluate(el => getComputedStyle(el).color), lightColor);
   await waitForDecks(page, 14);
   await page.selectOption('#banSel', 'false');
   await page.waitForFunction(() => document.querySelectorAll('#cards thead th').length === 5);
@@ -131,7 +140,7 @@ test('filter changes, empty recovery, language and live updates redraw complete 
   await waitForDecks(page, 14);
 });
 
-test('full deck text fits desktop and mobile in both languages', { timeout: 30000 }, async t => {
+test('deck images and inline statistics fit desktop and mobile in both languages', { timeout: 30000 }, async t => {
   const { page } = await dashboard(t);
   await waitForDecks(page, 114);
   assert(await page.locator('#cards').evaluate(table => {
@@ -143,10 +152,15 @@ test('full deck text fits desktop and mobile in both languages', { timeout: 3000
     await page.setViewportSize({ width, height: 900 });
     for (let language = 0; language < 2; language++) {
       await page.click('#langBtn');
-      await page.waitForFunction(lang => document.documentElement.lang === lang && document.querySelector('.deck-cards').textContent.startsWith(lang === 'en' ? 'Peashooter' : '豌豆射手'), language === 0 ? 'en' : 'zh-CN');
+      await page.waitForFunction(lang => document.documentElement.lang === lang && document.querySelector('.deck-card')?.alt === (lang === 'en' ? 'Peashooter' : '豌豆射手'), language === 0 ? 'en' : 'zh-CN');
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `page overflow at ${width}`);
-      assert(await page.locator('.deck-cards').evaluateAll(elements => elements.every(el => el.scrollWidth <= el.clientWidth)), `deck names clipped at ${width}`);
-      assert(await page.locator('.deck-core-name').evaluateAll(elements => elements.every(el => el.scrollWidth <= el.clientWidth)), `core names clipped at ${width}`);
+      assert(await page.locator('.deck-cards').evaluateAll(elements => elements.every(el => el.scrollWidth <= el.clientWidth)), `deck images clipped at ${width}`);
+      assert(await page.locator('.deck-heading').evaluateAll(elements => elements.every(el => {
+        const name = el.querySelector('.deck-core-name').getBoundingClientRect();
+        const meta = el.querySelector('.deck-meta').getBoundingClientRect();
+        return Math.abs(name.top - meta.top) < 4 && meta.left >= name.right && meta.right <= el.getBoundingClientRect().right + 1;
+      })), `deck statistics not inline at ${width}`);
+      assert(await page.locator('.deck-core-name').evaluateAll(elements => elements.every(el => el.title.length > 0)));
     }
   }
 });
