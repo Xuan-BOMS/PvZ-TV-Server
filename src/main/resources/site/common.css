@@ -1,0 +1,31 @@
+:root { --toolbar-ink: #fff0ce; --toolbar-muted: #e9cf9f; --toolbar-line: #4f301e; --toolbar-focus: #ffe285; }
+.global-header { min-height: 60px; display: flex; align-items: center; gap: 24px; padding: 0 max(22px, calc((100vw - 1320px) / 2)); color: var(--toolbar-ink); border-bottom: 3px solid var(--toolbar-line); background: linear-gradient(#825634, #603b24); box-shadow: inset 0 1px #b88c59, 0 3px 8px #4025164d; font-family: "Trebuchet MS", "Microsoft YaHei", sans-serif; }
+.global-header a { color: inherit; text-decoration: none; }
+.global-brand { flex: 0 0 auto; display: inline-flex; align-items: baseline; gap: 9px; }
+.global-brand strong { font: bold 21px Georgia, "Microsoft YaHei", serif; text-shadow: 0 2px #3d2518; }
+.global-brand small { color: var(--toolbar-muted); font-size: 12px; }
+.global-nav { min-height: 57px; display: flex; align-items: stretch; gap: 22px; margin-left: auto; }
+.global-nav a { min-height: 44px; display: inline-flex; align-items: center; padding: 0 3px; border-bottom: 3px solid transparent; font-size: 14px; white-space: nowrap; }
+.global-nav a:hover, .global-nav a[aria-current="page"] { color: #ffe18a; border-bottom-color: #e9bc58; }
+.global-back { flex: 0 0 auto; padding: 9px 12px; border: 1px solid #b98b54; border-radius: 4px; background: #4e321f; font-size: 13px; white-space: nowrap; }
+.global-back:hover { background: #704a2d; }
+.global-header a:focus-visible, .global-header button:focus-visible { outline: 3px solid var(--toolbar-focus); outline-offset: 2px; }
+.global-header .header-tools { display: flex; gap: 7px; margin-left: 0; }
+.global-header .header-tools button { min-height: 36px; border: 1px solid #bb925f; color: var(--toolbar-ink); background: #513922; }
+@media (max-width: 760px) {
+  .global-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px; padding: 0 12px; }
+  .global-brand { min-height: 48px; align-items: center; gap: 8px; }
+  .global-brand strong { font-size: 19px; }
+  .global-brand small { font-size: 12px; }
+  .global-back, .global-header .header-tools { grid-column: 2; grid-row: 1; }
+  .global-back { padding: 7px 9px; font-size: 12px; }
+  .global-nav { grid-column: 1/-1; grid-row: 2; min-height: 42px; width: 100%; justify-content: space-between; gap: 12px; margin: 0; border-top: 1px solid #a87b484d; }
+  .global-nav a { min-height: 42px; font-size: 12px; }
+}
+@media (max-width: 900px) and (orientation: landscape) {
+  .global-header { min-height: 45px; display: flex; gap: 16px; padding: 0 12px; }
+  .global-brand { min-height: 42px; }
+  .global-brand small { display: none; }
+  .global-nav { min-height: 42px; width: auto; margin-left: auto; gap: 15px; border: 0; }
+  .global-nav a { min-height: 42px; font-size: 12px; }
+}

@@ -5,9 +5,13 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 
 import java.io.IOException;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -16,14 +20,26 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.HexFormat;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.zip.GZIPOutputStream;
 
 final class DashboardServer {
     private static final String DB_URL = "jdbc:sqlite:data/pvz_metrics.db";
+    private static final String ALMANAC_RESOURCE = "/almanac/index.html";
     private static final int SUNFLOWER_SEED = 1;
     private static final int GRAVESTONE_SEED = 61;
+    private static final Map<String, CachedResource> RESOURCES = new ConcurrentHashMap<>();
+    private static final List<String> SITE_IMAGES = List.of("data-scene.webp", "atlas-scene.webp", "download-crate.webp",
+            "home-background.webp", "plant-background.webp", "zombie-background.webp", "almanac-book.webp",
+            "data-shop.webp", "download-versus.webp");
+
+    private record CachedResource(byte[] content, byte[] gzip, String etag) {
+    }
 
     private DashboardServer() {
     }
@@ -36,7 +52,13 @@ final class DashboardServer {
         defaultProperty("sun.net.httpserver.maxRspTime", "30");
         defaultProperty("sun.net.httpserver.maxReqHeaders", "64");
         defaultProperty("sun.net.httpserver.maxReqHeaderSize", "16384");
-        HttpServer server = HttpServer.create(new InetSocketAddress(port), 64);
+        String bindAddress = System.getProperty("pvz.dashboard.bindAddress", "0.0.0.0");
+        HttpServer server = HttpServer.create(new InetSocketAddress(bindAddress, port), 64);
+        server.createContext("/site/", new SiteAssetHandler());
+        server.createContext("/assets/site/ui/", new SiteImageHandler());
+        server.createContext("/assets/cards/", new CardImageHandler());
+        server.createContext("/almanac/", new AlmanacHandler());
+        server.createContext("/data/", new DataHandler());
         server.createContext("/", new IndexHandler());
         server.createContext("/api/top-decks", new TopDecksHandler());
         server.createContext("/api/card-stats", new CardStatsHandler());
@@ -75,7 +97,165 @@ final class DashboardServer {
                 writeText(exchange, 405, "Method Not Allowed", "text/plain; charset=utf-8");
                 return;
             }
-            writeText(exchange, 200, buildHtml(), "text/html; charset=utf-8");
+            writeResource(exchange, "/site/index.html", "text/html; charset=utf-8");
+        }
+    }
+
+    private static final class DataHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                writeText(exchange, 405, "Method Not Allowed", "text/plain; charset=utf-8");
+                return;
+            }
+            writeResource(exchange, "/site/data.html", "text/html; charset=utf-8");
+        }
+    }
+
+    private static final class SiteAssetHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                writeText(exchange, 405, "Method Not Allowed", "text/plain; charset=utf-8");
+                return;
+            }
+            String path = exchange.getRequestURI().getPath();
+            String name = path.startsWith("/site/") ? path.substring("/site/".length()) : "";
+            String type = switch (name) {
+                case "portal.css", "data.css", "common.css" -> "text/css; charset=utf-8";
+                case "portal.js", "data.js", "download-links.js" -> "text/javascript; charset=utf-8";
+                default -> name.startsWith("ui/") && SITE_IMAGES.contains(name.substring(3)) ? "image/webp" : null;
+            };
+            if (type == null) {
+                writeText(exchange, 404, "Not Found", "text/plain; charset=utf-8");
+                return;
+            }
+            String resourcePath = "image/webp".equals(type) ? "/assets/site/" + name : "/site/" + name;
+            writeResource(exchange, resourcePath, type);
+        }
+    }
+
+    private static final class SiteImageHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                writeText(exchange, 405, "Method Not Allowed", "text/plain; charset=utf-8");
+                return;
+            }
+            String path = exchange.getRequestURI().getPath();
+            String name = path.startsWith("/assets/site/ui/") ? path.substring("/assets/site/ui/".length()) : "";
+            if (!SITE_IMAGES.contains(name)) {
+                writeText(exchange, 404, "Not Found", "text/plain; charset=utf-8");
+                return;
+            }
+            writeResource(exchange, "/assets/site/ui/" + name, "image/webp");
+        }
+    }
+
+    private static final class CardImageHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                writeText(exchange, 405, "Method Not Allowed", "text/plain; charset=utf-8");
+                return;
+            }
+            String path = exchange.getRequestURI().getPath();
+            String name = path.startsWith("/assets/cards/") ? path.substring("/assets/cards/".length()) : "";
+            if (!name.matches("SEED_PACKET_[0-9]{2,3}(?:_MOUND_LEVEL_[0-4])?\\.(?:PNG|webp)")) {
+                writeText(exchange, 404, "Not Found", "text/plain; charset=utf-8");
+                return;
+            }
+            writeResource(exchange, "/assets/cards/" + name, name.endsWith(".webp") ? "image/webp" : "image/png");
+        }
+    }
+
+    private static void writeResource(HttpExchange exchange, String resourcePath, String contentType) throws IOException {
+        CachedResource cached = RESOURCES.get(resourcePath);
+        if (cached == null) {
+            try (InputStream resource = DashboardServer.class.getResourceAsStream(resourcePath)) {
+                if (resource == null) {
+                    writeText(exchange, 404, "Not Found", "text/plain; charset=utf-8");
+                    return;
+                }
+                byte[] content = resource.readAllBytes();
+                byte[] gzip = null;
+                if (contentType.startsWith("text/") && content.length > 512) {
+                    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                    try (GZIPOutputStream compressor = new GZIPOutputStream(buffer)) {
+                        compressor.write(content);
+                    }
+                    gzip = buffer.toByteArray();
+                }
+                String hash;
+                try {
+                    hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content));
+                } catch (NoSuchAlgorithmException exception) {
+                    throw new IllegalStateException(exception);
+                }
+                cached = new CachedResource(content, gzip, hash);
+                CachedResource previous = RESOURCES.putIfAbsent(resourcePath, cached);
+                if (previous != null) cached = previous;
+            }
+        }
+        boolean compressed = cached.gzip() != null && acceptsGzip(exchange);
+        String etag = '"' + cached.etag() + (compressed ? "-gzip" : "") + '"';
+        exchange.getResponseHeaders().set("Content-Type", contentType);
+        exchange.getResponseHeaders().set("Cache-Control", "public, max-age=0, must-revalidate");
+        exchange.getResponseHeaders().set("ETag", etag);
+        if (cached.gzip() != null) exchange.getResponseHeaders().set("Vary", "Accept-Encoding");
+        if (compressed) exchange.getResponseHeaders().set("Content-Encoding", "gzip");
+        String condition = exchange.getRequestHeaders().getFirst("If-None-Match");
+        if (condition != null) {
+            for (String candidate : condition.split(",")) {
+                String tag = candidate.trim();
+                if (tag.equals("*") || tag.equals(etag) || tag.equals("W/" + etag)) {
+                    exchange.sendResponseHeaders(304, -1);
+                    exchange.close();
+                    return;
+                }
+            }
+        }
+        byte[] content = compressed ? cached.gzip() : cached.content();
+        exchange.sendResponseHeaders(200, content.length);
+        try (OutputStream output = exchange.getResponseBody()) {
+            output.write(content);
+        }
+    }
+
+    private static boolean acceptsGzip(HttpExchange exchange) {
+        String header = exchange.getRequestHeaders().getFirst("Accept-Encoding");
+        if (header == null) return false;
+        for (String encoding : header.split(",")) {
+            String[] parts = encoding.trim().split(";");
+            if (!parts[0].trim().equalsIgnoreCase("gzip")) continue;
+            double quality = 1;
+            for (int index = 1; index < parts.length; index++) {
+                String parameter = parts[index].trim();
+                if (parameter.startsWith("q=")) {
+                    try {
+                        quality = Double.parseDouble(parameter.substring(2));
+                    } catch (NumberFormatException exception) {
+                        quality = 0;
+                    }
+                }
+            }
+            return quality > 0;
+        }
+        return false;
+    }
+
+    private static final class AlmanacHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                writeText(exchange, 405, "Method Not Allowed", "text/plain; charset=utf-8");
+                return;
+            }
+            if (!"/almanac/".equals(exchange.getRequestURI().getPath())) {
+                writeText(exchange, 404, "Not Found", "text/plain; charset=utf-8");
+                return;
+            }
+            writeResource(exchange, ALMANAC_RESOURCE, "text/html; charset=utf-8");
         }
     }
 
@@ -474,6 +654,11 @@ final class DashboardServer {
                 ".filters{grid-column:2;display:flex;gap:8px;align-items:center;justify-content:flex-start;flex-wrap:nowrap;transform:translateX(-148px)}" +
                 ".actions{grid-column:3;justify-self:end;display:flex;gap:0;align-items:center;white-space:nowrap;transform:translate(-32px,-4px)}" +
                 ".btn{padding:7px 12px;border:1px solid rgba(255,255,255,0.7);border-radius:10px;background:transparent;color:var(--topText);cursor:pointer}" +
+                ".almanac-btn{font-weight:700;min-width:64px}" +
+                "#almanacView[hidden]{display:none}.almanac-view{position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;background:var(--bg)}" +
+                ".almanac-bar{height:52px;flex:0 0 52px;display:flex;align-items:center;gap:14px;padding:0 12px;background:var(--top);color:var(--topText)}" +
+                ".almanac-back{padding:8px 12px;border:1px solid rgba(255,255,255,0.7);border-radius:8px;background:transparent;color:var(--topText);font:inherit;font-weight:700;cursor:pointer}" +
+                ".almanac-title{font-size:14px;font-weight:700}.almanac-frame{display:block;flex:1;width:100%;height:calc(100vh - 52px);border:0;background:var(--bg)}" +
                 ".actions .btn{padding:0;border:none;border-radius:0;background:transparent;color:rgba(255,255,255,0.62);font-size:13px;font-weight:400}" +
                 ".actions .sep{padding:0 7px;color:rgba(255,255,255,0.5)}" +
                 ".flt{padding:8px 12px;border:1px solid rgba(255,255,255,0.7);border-radius:10px;background:transparent;color:var(--topText);font-size:15px;font-weight:700}" +
@@ -502,22 +687,23 @@ final class DashboardServer {
                 "@media (max-width:1180px){body{overflow-x:hidden;padding:0 6px 18px 6px}.page{display:block;width:100%;min-width:0}.layout{grid-template-columns:minmax(0,1fr)}.deck-wrap{grid-template-columns:minmax(0,1fr)}.deck-list{height:380px}#cardsWrap{height:400px;overflow:auto}#cards{min-width:560px;font-size:12px}#recent{min-width:520px;font-size:12px}#cards th,#cards td,#recent th,#recent td{padding:5px 6px}#cards th,#recent th{white-space:nowrap}.card-head{display:grid;grid-template-columns:1fr;align-items:start}.card-head .seg{width:100%;display:grid;grid-template-columns:1fr 1fr}.seg .btn{min-width:0}.top{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;column-gap:8px;row-gap:10px;padding:14px 8px}.top>div:first-child{grid-column:1;grid-row:1;min-width:0}.top h1{font-size:21px}.controls{display:contents}.actions{grid-column:2;grid-row:1;justify-self:end;align-self:start;transform:none;margin-top:2px;max-width:100%;white-space:nowrap;flex-wrap:nowrap}.actions .btn{font-size:13px}.actions .sep{padding:0 5px}.filters{grid-column:1/-1;grid-row:2;transform:none;display:grid;grid-template-columns:repeat(2,minmax(150px,1fr));gap:8px;justify-content:stretch;justify-items:stretch}.flt{width:100%;font-size:13px;padding:9px 8px;min-width:0}#pie{max-width:min(420px,100%)}}" +
                 "</style></head><body><div class='page'>" +
                 "<div class='top'><div><h1 id='topTitle'>PvZ_TV 对战大数据</h1><div class='muted' id='subTitle'>有新数据自动刷新（最短间隔10秒）</div></div>" +
-                "<div class='controls'><div class='filters'><select id='versionSel' class='flt'><option value='all'>全部版本</option></select><select id='banSel' class='flt'><option value='false'>禁选模式: 关</option><option value='true'>禁选模式: 开</option></select><select id='extraSel' class='flt'><option value='false'>额外卡槽: 关</option><option value='true'>额外卡槽: 开</option></select><select id='modeSel' class='flt'><option value='DAY'>白天</option><option value='NIGHT'>黑夜</option><option value='POOL'>泳池白天</option><option value='FOG'>泳池黑夜</option><option value='ROOF'>屋顶</option></select></div><div class='actions'><button id='langBtn' class='btn'>中文 / EN</button><span class='sep'>|</span><button id='themeBtn' class='btn'>日间 / 夜间</button></div></div></div>" +
+                "<div class='controls'><div class='filters'><select id='versionSel' class='flt'><option value='all'>全部版本</option></select><select id='banSel' class='flt'><option value='false'>禁选模式: 关</option><option value='true'>禁选模式: 开</option></select><select id='extraSel' class='flt'><option value='false'>额外卡槽: 关</option><option value='true'>额外卡槽: 开</option></select><select id='modeSel' class='flt'><option value='DAY'>白天</option><option value='NIGHT'>黑夜</option><option value='POOL'>泳池白天</option><option value='FOG'>泳池黑夜</option><option value='ROOF'>屋顶</option></select><button id='almanacBtn' class='btn almanac-btn'>图鉴</button></div><div class='actions'><button id='langBtn' class='btn'>中文 / EN</button><span class='sep'>|</span><button id='themeBtn' class='btn'>日间 / 夜间</button></div></div></div>" +
                 "<div class='layout'>" +
                 "<div class='card'><div class='card-head'><h3 id='deckTitle'>Top 10 卡组</h3><div class='seg'><button id='sidePlant' class='btn active'>植物</button><button id='sideZombie' class='btn'>僵尸</button></div></div><div class='deck-wrap'><div class='pie-box'><canvas id='pie' width='420' height='420'></canvas></div><div id='deckList' class='deck-list'></div></div></div>" +
                 "<div class='card'><h3 id='cardTitle'>单卡统计</h3><div id='cardsWrap'><table id='cards'><thead><tr><th id='thCard'>卡牌</th><th id='thPick'>选取</th><th id='thBan'>禁用</th><th id='thWin'>胜场</th><th id='thWr'>胜率</th><th id='thPr'>选取率</th><th id='thBr'>禁用率</th></tr></thead><tbody></tbody></table></div></div>" +
+                "<div id='almanacView' class='almanac-view' hidden><div class='almanac-bar'><button id='almanacBackBtn' class='almanac-back'><span id='almanacBackLabel'>返回</span></button><strong class='almanac-title'>PvZ TV 3215 图鉴</strong></div><iframe id='almanacFrame' class='almanac-frame' title='PvZ TV 3215 图鉴' loading='lazy' referrerpolicy='strict-origin-when-cross-origin'></iframe></div>" +
                 "</div>" +
                 "<div class='card' style='margin-top:14px'><h3 id='recentTitle'>Recent Matches</h3><div id='recentWrap'><table id='recent'><thead><tr><th id='recentThTime'>Time</th><th id='recentThPlant'>Plant</th><th id='recentThZombie'>Zombie</th><th id='recentThWinner'>Winner</th><th id='recentThDuration'>Duration</th></tr></thead><tbody></tbody></table></div></div>" +
                 "</div>" +
                 "<script>" +
                 "let lang=(localStorage.getItem('pvz_lang')||'zh');let side=(localStorage.getItem('pvz_side')||'PLANT');let names={};let versions=[];let netplayVersion='all';let decks=[];let totalPlays=0;let decksLoading=true;let hoverDeck='';let extraPacket=(localStorage.getItem('pvz_extra_packet')||'true');let banMode=(localStorage.getItem('pvz_ban_mode')||'true');let mode=(localStorage.getItem('pvz_mode')||'DAY');let theme=(localStorage.getItem('pvz_theme')||'light');let nextAutoRefreshAt=0;let autoRefreshTimer=0;let reqVer=0;const MIN_AUTO_REFRESH_MS=10000;" +
-                "const i18n={zh:{title:'PvZ_TV 对战大数据',deckTitle:'Top 10 卡组',cardTitle:'单卡统计',recentTitle:'最近对局',time:'时间',duration:'时长',winner:'胜方',sub:'有新数据自动刷新（最短间隔10秒）',card:'卡牌',pick:'选取',ban:'禁用',win:'胜场',wr:'胜率',pr:'选取率',br:'禁用率',plant:'植物',zombie:'僵尸',unknown:'未知卡牌',sideSuffix:'方',rate:'胜率',plays:'对局',winnerPlant:'植物',winnerZombie:'僵尸',noData:'暂无数据',loading:'加载中...',allVersions:'全部版本',versionLabel:'游戏版本: ',extraOff:'额外卡槽: 关',extraOn:'额外卡槽: 开',banOff:'禁选模式: 关',banOn:'禁选模式: 开',modeDay:'白天',modeNight:'黑夜',modePool:'泳池白天',modeFog:'泳池黑夜',modeRoof:'屋顶',themeLight:'☀日间',themeDark:'🌙夜间'},en:{title:'PvZ_TV Battle Data',deckTitle:'Top 10 Decks',cardTitle:'Card Stats',recentTitle:'Recent Matches',time:'Time',duration:'Duration',winner:'Winner',sub:'Auto refresh on new data (min 10s interval)',card:'Card',pick:'Pick',ban:'Ban',win:'Wins',wr:'Win Rate',pr:'Pick Rate',br:'Ban Rate',plant:'Plant',zombie:'Zombie',unknown:'UnknownSeed',sideSuffix:'',rate:'Win Rate',plays:'Plays',winnerPlant:'Plant',winnerZombie:'Zombie',noData:'No Data',loading:'Loading...',allVersions:'All Versions',versionLabel:'Game Version: ',extraOff:'Extra Slot: Off',extraOn:'Extra Slot: On',banOff:'Ban Mode: Off',banOn:'Ban Mode: On',modeDay:'Day',modeNight:'Night',modePool:'Pool Day',modeFog:'Pool Night',modeRoof:'Roof',themeLight:'☀Light',themeDark:'🌙Dark'}};" +
+                "const i18n={zh:{title:'PvZ_TV 对战大数据',deckTitle:'Top 10 卡组',cardTitle:'单卡统计',recentTitle:'最近对局',time:'时间',duration:'时长',winner:'胜方',sub:'有新数据自动刷新（最短间隔10秒）',card:'卡牌',pick:'选取',ban:'禁用',win:'胜场',wr:'胜率',pr:'选取率',br:'禁用率',plant:'植物',zombie:'僵尸',unknown:'未知卡牌',sideSuffix:'方',rate:'胜率',plays:'对局',winnerPlant:'植物',winnerZombie:'僵尸',noData:'暂无数据',loading:'加载中...',allVersions:'全部版本',versionLabel:'游戏版本: ',extraOff:'额外卡槽: 关',extraOn:'额外卡槽: 开',banOff:'禁选模式: 关',banOn:'禁选模式: 开',modeDay:'白天',modeNight:'黑夜',modePool:'泳池白天',modeFog:'泳池黑夜',modeRoof:'屋顶',almanac:'图鉴',back:'返回',themeLight:'☀日间',themeDark:'🌙夜间'},en:{title:'PvZ_TV Battle Data',deckTitle:'Top 10 Decks',cardTitle:'Card Stats',recentTitle:'Recent Matches',time:'Time',duration:'Duration',winner:'Winner',sub:'Auto refresh on new data (min 10s interval)',card:'Card',pick:'Pick',ban:'Ban',win:'Wins',wr:'Win Rate',pr:'Pick Rate',br:'Ban Rate',plant:'Plant',zombie:'Zombie',unknown:'UnknownSeed',sideSuffix:'',rate:'Win Rate',plays:'Plays',winnerPlant:'Plant',winnerZombie:'Zombie',noData:'No Data',loading:'Loading...',allVersions:'All Versions',versionLabel:'Game Version: ',extraOff:'Extra Slot: Off',extraOn:'Extra Slot: On',banOff:'Ban Mode: Off',banOn:'Ban Mode: On',modeDay:'Day',modeNight:'Night',modePool:'Pool Day',modeFog:'Pool Night',modeRoof:'Roof',almanac:'Almanac',back:'Back',themeLight:'☀Light',themeDark:'🌙Dark'}};" +
                 "function pct(x){return (x*100).toFixed(2)+'%'}" +
                 "function sideText(s){return s==='PLANT'?i18n[lang].plant:i18n[lang].zombie}" +
                 "function winnerText(w){return w==='PLANT'?i18n[lang].winnerPlant:(w==='ZOMBIE'?i18n[lang].winnerZombie:w)}" +
                 "function cardName(id,en,zh){const n=names[id];if(n){return lang==='zh'?(n.zh||n.en):n.en;}return lang==='zh'?(zh||en||i18n[lang].unknown):(en||i18n[lang].unknown)}" +
                 "function fmtTime(s){if(!s)return '-';const iso=s.includes('T')?s:(s.replace(' ','T')+'Z');const d=new Date(iso);if(Number.isNaN(d.getTime()))return s;return d.toLocaleString(lang==='zh'?'zh-CN':'en-US',{hour12:false});}" +
-                "function labels(){const t=i18n[lang];renderVersions();document.getElementById('topTitle').textContent=t.title;document.getElementById('deckTitle').textContent=sideText(side)+t.sideSuffix+' '+t.deckTitle;document.getElementById('cardTitle').textContent=t.cardTitle;document.getElementById('recentTitle').textContent=t.recentTitle;document.getElementById('recentThTime').textContent=t.time;document.getElementById('recentThPlant').textContent=t.plant;document.getElementById('recentThZombie').textContent=t.zombie;document.getElementById('recentThWinner').textContent=t.winner;document.getElementById('recentThDuration').textContent=t.duration;document.getElementById('subTitle').textContent=t.sub;document.getElementById('thCard').textContent=t.card;document.getElementById('thPick').textContent=t.pick;document.getElementById('thBan').textContent=t.ban;document.getElementById('thWin').textContent=t.win;document.getElementById('thWr').textContent=t.wr;document.getElementById('thPr').textContent=t.pr;document.getElementById('thBr').textContent=t.br;const e=document.getElementById('extraSel');e.options[0].text=t.extraOff;e.options[1].text=t.extraOn;const b=document.getElementById('banSel');b.options[0].text=t.banOff;b.options[1].text=t.banOn;const m=document.getElementById('modeSel');m.options[0].text=t.modeDay;m.options[1].text=t.modeNight;m.options[2].text=t.modePool;m.options[3].text=t.modeFog;m.options[4].text=t.modeRoof;document.getElementById('sidePlant').textContent=t.plant;document.getElementById('sideZombie').textContent=t.zombie;document.getElementById('langBtn').textContent=(lang==='zh'?'中文 / EN':'EN / 中文');document.getElementById('themeBtn').textContent=(theme==='dark'?t.themeDark:t.themeLight);applyBanColumns();}" +
+                "function labels(){const t=i18n[lang];renderVersions();document.getElementById('topTitle').textContent=t.title;document.getElementById('deckTitle').textContent=sideText(side)+t.sideSuffix+' '+t.deckTitle;document.getElementById('cardTitle').textContent=t.cardTitle;document.getElementById('recentTitle').textContent=t.recentTitle;document.getElementById('recentThTime').textContent=t.time;document.getElementById('recentThPlant').textContent=t.plant;document.getElementById('recentThZombie').textContent=t.zombie;document.getElementById('recentThWinner').textContent=t.winner;document.getElementById('recentThDuration').textContent=t.duration;document.getElementById('subTitle').textContent=t.sub;document.getElementById('thCard').textContent=t.card;document.getElementById('thPick').textContent=t.pick;document.getElementById('thBan').textContent=t.ban;document.getElementById('thWin').textContent=t.win;document.getElementById('thWr').textContent=t.wr;document.getElementById('thPr').textContent=t.pr;document.getElementById('thBr').textContent=t.br;const e=document.getElementById('extraSel');e.options[0].text=t.extraOff;e.options[1].text=t.extraOn;const b=document.getElementById('banSel');b.options[0].text=t.banOff;b.options[1].text=t.banOn;const m=document.getElementById('modeSel');m.options[0].text=t.modeDay;m.options[1].text=t.modeNight;m.options[2].text=t.modePool;m.options[3].text=t.modeFog;m.options[4].text=t.modeRoof;document.getElementById('sidePlant').textContent=t.plant;document.getElementById('sideZombie').textContent=t.zombie;document.getElementById('almanacBtn').textContent=t.almanac;document.getElementById('almanacBackLabel').textContent=t.back;document.getElementById('langBtn').textContent=(lang==='zh'?'中文 / EN':'EN / 中文');document.getElementById('themeBtn').textContent=(theme==='dark'?t.themeDark:t.themeLight);applyBanColumns();}" +
                 "function applyBanColumns(){const on=(banMode==='true');['thBan','thBr'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=on?'':'none';});}" +
                 "function renderVersions(){const sel=document.getElementById('versionSel');sel.innerHTML='';versions.forEach(v=>{const opt=document.createElement('option');opt.value=v;opt.textContent=i18n[lang].versionLabel+v;sel.appendChild(opt);});const all=document.createElement('option');all.value='all';all.textContent=i18n[lang].allVersions;sel.appendChild(all);sel.value=netplayVersion;}" +
                 "async function loadVersions(v){try{const r=await fetch('/api/versions',{cache:'no-store'});if(!r.ok)return;const j=await r.json();if(v!==reqVer||!Array.isArray(j.items))return;versions=j.items.map(String);if(netplayVersion!=='all'&&!versions.includes(netplayVersion))netplayVersion='all';renderVersions();}catch(_){}}" +
@@ -536,6 +722,7 @@ final class DashboardServer {
                 "async function tick(){const v=++reqVer;await loadVersions(v);if(v!==reqVer)return;await Promise.allSettled([loadDecks(v),loadCards(v),loadRecent(v)]);}" +
                 "function scheduleAutoRefresh(){const now=Date.now();if(now>=nextAutoRefreshAt){nextAutoRefreshAt=now+MIN_AUTO_REFRESH_MS;tick();return;}if(autoRefreshTimer)return;autoRefreshTimer=setTimeout(()=>{autoRefreshTimer=0;nextAutoRefreshAt=Date.now()+MIN_AUTO_REFRESH_MS;tick();},Math.max(0,nextAutoRefreshAt-now));}" +
                 "function renderSideBtns(){const p=document.getElementById('sidePlant');const z=document.getElementById('sideZombie');if(side==='PLANT'){p.classList.add('active');z.classList.remove('active');}else{z.classList.add('active');p.classList.remove('active');}}" +
+                "const almanacView=document.getElementById('almanacView');const almanacFrame=document.getElementById('almanacFrame');document.getElementById('almanacBtn').addEventListener('click',()=>{almanacView.hidden=false;if(almanacFrame.getAttribute('src')===null)almanacFrame.src='/almanac/';});document.getElementById('almanacBackBtn').addEventListener('click',()=>{almanacView.hidden=true;document.getElementById('almanacBtn').focus();});" +
                 "document.getElementById('langBtn').addEventListener('click',async()=>{lang=(lang==='zh'?'en':'zh');localStorage.setItem('pvz_lang',lang);labels();const bn=document.getElementById('banSel');if(bn){bn.options[0].text=(lang==='zh'?'禁选模式: 关':'Ban Mode: Off');bn.options[1].text=(lang==='zh'?'禁选模式: 开':'Ban Mode: On');}renderSideBtns();renderDecks();drawPie();await tick();});" +
                 "function applyTheme(){document.body.classList.toggle('dark',theme==='dark');const t=i18n[lang];document.getElementById('themeBtn').textContent=(theme==='dark'?t.themeDark:t.themeLight);}" +
                 "document.getElementById('themeBtn').addEventListener('click',()=>{theme=(theme==='dark'?'light':'dark');localStorage.setItem('pvz_theme',theme);applyTheme();drawPie();});" +

@@ -1,0 +1,75 @@
+:root { color-scheme: light; --ink: #402b1c; --muted: #765b3e; --focus: #fff0a0; font-family: "Trebuchet MS", "Microsoft YaHei", sans-serif; color: var(--ink); background: #b9874b; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100svh; background: #b9874b url("./ui/home-background.webp") center top / cover fixed no-repeat; }
+button { font: inherit; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+a, button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+a:focus-visible, button:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
+h1, h2, p { margin: 0; }
+.site-shell { width: min(1100px, 100%); margin: 0 auto; padding: 0 40px; }
+.page-intro { height: clamp(130px, 15vh, 166px); }
+.page-intro h1 { position: absolute; top: calc(max(7.8125vw, 13.8889svh) + var(--home-background-offset, 0px)); left: 50%; transform: translate(-50%, -50%); color: #fff0cf; font: bold clamp(25px, 2.8vw, 34px)/1.2 Georgia, "Microsoft YaHei", serif; text-shadow: 0 2px 2px #422818; }
+.destination-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 38px; max-width: 780px; margin: 12px auto 0; }
+.destination { min-width: 0; min-height: 300px; display: flex; align-items: center; justify-content: flex-end; flex-direction: column; gap: 16px; padding: 24px 20px 25px; border: 3px solid #6b4428; border-radius: 8px; background: #e5bd7ac9; box-shadow: inset 0 0 0 2px #f5d79c, 0 5px 0 #6c4529, 0 9px 16px #59391d33; transition: transform .16s, background .16s; }
+.destination:hover { transform: translateY(-3px); background: #f0ce8fe8; }
+.destination img { display: block; width: auto; height: 190px; max-width: 100%; object-fit: contain; filter: drop-shadow(0 5px 3px #5f3b2633); }
+.atlas-destination img { width: 180px; height: 190px; }
+.destination h2, .download-strip > span { color: #fff0cc; font: bold 25px/1.2 Georgia, "Microsoft YaHei", serif; text-shadow: 0 2px #3d281a; }
+.destination h2 { width: 100%; padding: 10px 12px; border: 2px solid #53351f; border-radius: 4px; background: linear-gradient(#936439, #6b4225); text-align: center; box-shadow: inset 0 1px #c99a60; }
+.atlas-destination h2 { border-color: #474157; background: linear-gradient(#86839c, #5c586f); box-shadow: inset 0 1px #b5abc9; }
+.download-strip { width: min(780px, 100%); min-height: 110px; display: flex; align-items: center; justify-content: center; gap: 26px; margin: 30px auto 0; padding: 10px 24px; border: 3px solid #624024; border-radius: 6px; background: linear-gradient(#976b3df2, #7b512ef2); box-shadow: inset 0 0 0 1px #bd925b, 0 4px #5d3d24; transition: transform .16s; }
+.download-strip:hover { transform: translateY(-2px); }
+.download-strip > img { width: 86px; height: 86px; object-fit: contain; }
+.site-footer { min-height: 64px; display: grid; place-items: center; color: #563a25; font-size: 12px; text-align: center; }
+.download-dialog { position: fixed; width: min(550px, calc(100% - 24px)); max-height: calc(100svh - 24px); padding: 24px; border: 3px solid #684126; border-radius: 7px; background: #f1dfb6; color: var(--ink); box-shadow: inset 0 0 0 2px #fff0cf, 0 18px 65px #21180d77; }
+.download-dialog::backdrop { background: #281d12c9; }
+.dialog-close { position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; border: 1px solid #926b43; border-radius: 3px; color: #fff0cf; background: #80532f; font-size: 23px; }
+.download-heading { min-height: 115px; display: flex; align-items: center; gap: 20px; padding-right: 24px; margin-bottom: 15px; }
+.download-heading img { width: 95px; height: 95px; object-fit: contain; }
+.download-heading h2 { font: bold 25px Georgia, "Microsoft YaHei", serif; }
+.download-links { display: grid; gap: 8px; }
+.download-row { min-height: 64px; display: flex; align-items: center; gap: 12px; padding: 9px 11px; border: 1px solid #c6a573; border-radius: 4px; background: #fff3d6; }
+.drive-mark { width: 36px; height: 36px; flex: 0 0 36px; display: grid; place-items: center; border: 1px solid #b59a67; border-radius: 4px; color: #65502d; background: #ecdbb0; font-size: 14px; font-weight: bold; }
+.drive-info { flex: 1; min-width: 0; }
+.drive-info strong { display: block; font-size: 14px; }
+.drive-info small { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+.drive-action { min-width: 82px; padding: 8px; border: 1px solid #63804c; border-radius: 3px; color: #fff8e8; background: #557241; text-align: center; font-size: 12px; }
+.drive-action:disabled { color: #77694d; border-color: #c4b58f; background: #e5dac1; }
+.download-note { margin-top: 13px; color: var(--muted); text-align: center; font-size: 12px; }
+@media (max-width: 760px) {
+  .site-shell { padding: 0 18px; }
+  .page-intro { height: 112px; }
+  .page-intro h1 { font-size: 25px; }
+  .destination-grid { gap: 16px; margin-top: 3px; }
+  .destination { min-height: 245px; gap: 12px; padding: 20px 10px 16px; }
+  .destination img { height: 152px; }
+  .atlas-destination img { width: 143px; height: 152px; }
+  .destination h2 { padding: 9px 4px; font-size: 19px; }
+  .download-strip { margin-top: 24px; min-height: 96px; gap: 18px; }
+  .download-strip > img { width: 70px; height: 70px; }
+  .download-strip > span { font-size: 22px; }
+}
+@media (max-width: 380px) {
+  body { --home-background-offset: 32px; background-position: center 32px; }
+  .site-shell { padding-inline: 12px; }
+  .destination-grid { gap: 12px; }
+  .destination { min-height: 216px; padding: 16px 8px 12px; }
+  .destination img, .atlas-destination img { height: 128px; max-width: 120px; }
+  .destination h2 { font-size: 17px; }
+  .download-dialog { padding: 15px 12px; }
+  .download-row { gap: 8px; padding: 8px; }
+  .drive-action { min-width: 70px; padding: 8px 5px; }
+}
+@media (max-width: 900px) and (orientation: landscape) {
+  .page-intro { height: 77px; }
+  .page-intro h1 { font-size: 23px; }
+  .destination-grid { max-width: 640px; gap: 24px; margin-top: 0; }
+  .destination { min-height: 172px; gap: 8px; padding: 8px 15px 12px; }
+  .destination img, .atlas-destination img { height: 105px; width: auto; }
+  .destination h2 { padding: 6px; font-size: 18px; }
+  .download-strip { width: min(640px, 100%); min-height: 65px; margin-top: 18px; padding: 5px 16px; }
+  .download-strip > img { width: 50px; height: 50px; }
+  .download-strip > span { font-size: 19px; }
+  .site-footer { min-height: 40px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
