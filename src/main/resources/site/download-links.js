@@ -1,6 +1,4 @@
 window.PVZ_DOWNLOADS = [
-  { name: "百度网盘", mark: "百", url: "", code: "" },
-  { name: "夸克网盘", mark: "夸", url: "", code: "" },
-  { name: "阿里云盘", mark: "阿", url: "", code: "" },
-  { name: "123 云盘", mark: "123", url: "", code: "" }
+  { name: "UC网盘", mark: "UC", url: "https://drive.uc.cn/s/1261c5c0639a4?public=1", code: "" },
+  { name: "夸克网盘", mark: "夸", url: "https://pan.quark.cn/s/81ac11f3ea7a", code: "" }
 ];
