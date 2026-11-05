@@ -11,7 +11,8 @@ const names = [
   [4, '土豆地雷', 'Potato Mine'], [5, '寒冰射手', 'Snow Pea'],
   [62, '普通僵尸', 'Zombie'], [63, '旗帜僵尸', 'Flag Zombie'],
   [64, '路障僵尸', 'Conehead Zombie'], [65, '撑杆僵尸', 'Pole Vaulting Zombie'],
-  [66, '铁桶僵尸', 'Buckethead Zombie'], [91, '召唤墓碑', 'Summoning Gravestone']
+  [66, '铁桶僵尸', 'Buckethead Zombie'], [91, '召唤墓碑', 'Summoning Gravestone'],
+  [9, '阳光菇', 'Sun-shroom'], [61, '墓碑', 'Gravestone']
 ].map(([seed_type, zh, en]) => ({ seed_type, zh, en }));
 let browser;
 before(async () => {
@@ -19,7 +20,7 @@ before(async () => {
 });
 after(async () => { await browser?.close(); });
 
-async function dashboard(t, { delayDecks = false } = {}) {
+async function dashboard(t, { delayDecks = false, mixedProducers = false, emptyRoof = true } = {}) {
   const page = await browser.newPage({ viewport: { width: 1366, height: 900 } });
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -47,10 +48,11 @@ async function dashboard(t, { delayDecks = false } = {}) {
     else if (url.pathname === '/api/top-decks') {
       if (delayDecks) await gate;
       const zombie = url.searchParams.get('side') === 'ZOMBIE';
-      const ids = names.slice(zombie ? 6 : 0, zombie ? 12 : 6).map(item => item.seed_type);
+      const night = ['NIGHT', 'FOG'].includes(url.searchParams.get('mode'));
+      const ids = zombie ? [61, 62, 63, 64, 65, 91] : mixedProducers ? [0, 1, 9, 2, 3, 5] : [0, night ? 9 : 1, 2, 3, 4, 5];
       if (url.searchParams.get('extra_packet') === 'false') ids.pop();
       const plays = url.searchParams.get('netplay_version') === '3215' ? [9, 5] : [42, 72];
-      payload = { total_plays: 120, items: url.searchParams.get('mode') === 'ROOF' ? [] : plays.map((count, index) => ({
+      payload = { total_plays: 120, items: emptyRoof && url.searchParams.get('mode') === 'ROOF' ? [] : plays.map((count, index) => ({
         deck_ids: (index ? ids.slice().reverse() : ids).join('|'),
         core_zh: zombie ? '路障僵尸铁桶僵尸' : '寒冰射手坚果',
         core_en: zombie ? 'Conehead Zombie + Buckethead Zombie' : 'Snow Pea + Wall-nut',
@@ -92,10 +94,10 @@ test('delayed first response paints the chart without resizing', { timeout: 1500
   assert.equal(await page.locator('.metric-row').count(), 0);
 });
 
-test('each ranked deck includes every card, including the producer', { timeout: 15000 }, async t => {
+test('ranked decks show card art without the default producer', { timeout: 15000 }, async t => {
   const { page } = await dashboard(t);
   await page.waitForSelector('#deckList .deck-row');
-  assert.deepEqual(await page.locator('.deck-row').first().locator('.deck-card').evaluateAll(images => images.map(image => image.alt)), ['豌豆射手', '向日葵', '樱桃炸弹', '坚果', '土豆地雷', '寒冰射手']);
+  assert.deepEqual(await page.locator('.deck-row').first().locator('.deck-card').evaluateAll(images => images.map(image => image.alt)), ['豌豆射手', '樱桃炸弹', '坚果', '土豆地雷', '寒冰射手']);
   assert.equal(await page.locator('.deck-row').first().locator('.deck-cards').textContent(), '');
   await page.waitForFunction(() => [...document.querySelectorAll('.deck-row:first-child .deck-card')].every(image => image.complete && image.naturalWidth > 0));
   const before = await page.locator('#pie').evaluate(canvas => canvas.toDataURL());
@@ -105,6 +107,7 @@ test('each ranked deck includes every card, including the producer', { timeout: 
   assert.equal(await page.locator('#pie').evaluate(canvas => canvas.toDataURL()), before);
   await page.click('#sideZombie');
   await page.waitForFunction(() => document.querySelector('.deck-card')?.alt === '普通僵尸');
+  assert.equal(await page.locator('.deck-card[alt="墓碑"]').count(), 0);
   assert.equal(await page.locator('.deck-row').first().locator('.deck-card').last().getAttribute('src'), '/assets/cards/SEED_PACKET_91_MOUND_LEVEL_0.PNG');
   await page.waitForFunction(() => [...document.querySelectorAll('.deck-row:first-child .deck-card')].every(image => image.complete && image.naturalWidth > 0));
 });
@@ -120,7 +123,7 @@ test('filter changes, empty recovery, language and live updates redraw complete 
   await page.selectOption('#modeSel', 'DAY');
   await waitForDecks(page, 14);
   await page.selectOption('#extraSel', 'false');
-  await page.waitForFunction(() => document.querySelectorAll('.deck-row:first-child .deck-card').length === 5);
+  await page.waitForFunction(() => document.querySelectorAll('.deck-row:first-child .deck-card').length === 4);
   await page.click('#sideZombie');
   await page.waitForFunction(() => document.querySelector('.deck-card')?.alt === '普通僵尸');
   await page.click('#langBtn');
@@ -138,6 +141,19 @@ test('filter changes, empty recovery, language and live updates redraw complete 
     window.testEvents.dispatchEvent(new Event('settle'));
   });
   await waitForDecks(page, 14);
+});
+
+test('day and night maps hide only their default producer and preserve statistics', { timeout: 30000 }, async t => {
+  const { page } = await dashboard(t, { mixedProducers: true, emptyRoof: false });
+  await waitForDecks(page, 114);
+  const originalStats = await page.locator('.deck-meta').allTextContents();
+  for (const [map, retainedProducer] of [['NIGHT', '向日葵'], ['POOL', '阳光菇'], ['FOG', '向日葵'], ['ROOF', '阳光菇'], ['DAY', '阳光菇']]) {
+    await page.selectOption('#modeSel', map);
+    const expected = ['豌豆射手', retainedProducer, '樱桃炸弹', '坚果', '寒冰射手'];
+    await page.waitForFunction(expected => JSON.stringify([...document.querySelectorAll('.deck-row:first-child .deck-card')].map(image => image.alt)) === JSON.stringify(expected), expected);
+    assert.deepEqual(await page.locator('.deck-meta').allTextContents(), originalStats);
+    await waitForDecks(page, 114);
+  }
 });
 
 test('deck images and inline statistics fit desktop and mobile in both languages', { timeout: 30000 }, async t => {

@@ -101,6 +101,7 @@
     }
     content.classList.remove("is-empty");
     chart.hidden = false;
+    const producerId = state.side === "ZOMBIE" ? 61 : ["NIGHT", "FOG"].includes(state.mode) ? 9 : 1;
     decks.forEach((deck, index) => {
       const row = document.createElement("li");
       row.className = "deck-row";
@@ -112,7 +113,7 @@
       rank.className = "deck-rank";
       rank.textContent = String(index + 1).padStart(2, "0");
       const core = state.lang === "zh" ? deck.core_zh : deck.core_en;
-      const ids = (deck.deck_ids || "").split("|").filter(Boolean);
+      const ids = (deck.deck_ids || "").split("|").filter(id => id && Number(id) !== producerId);
       const names = ids.map(id => cardName({ seed_type: id }));
       const fallback = names.slice(0, 2).join(" + ");
       name.append(rank, document.createTextNode(core || fallback || t().noData));
@@ -125,7 +126,8 @@
       heading.append(name, meta);
       const cards = document.createElement("span");
       cards.className = "deck-cards";
-      cards.style.setProperty("--deck-card-count", ids.length);
+      cards.hidden = ids.length === 0;
+      cards.style.setProperty("--deck-card-count", Math.max(1, ids.length));
       ids.forEach((id, cardIndex) => {
         const image = document.createElement("img");
         image.className = "deck-card";
