@@ -46,10 +46,10 @@
     $("#banLabel").textContent = words.ban;
     $("#extraLabel").textContent = words.extra;
     $("#mapLabel").textContent = words.map;
-    $("#banSel").options[0].text = `${words.ban}: ${words.off}`;
-    $("#banSel").options[1].text = `${words.ban}: ${words.on}`;
-    $("#extraSel").options[0].text = `${words.extra}: ${words.off}`;
-    $("#extraSel").options[1].text = `${words.extra}: ${words.on}`;
+    $("#banSel").options[0].text = words.off;
+    $("#banSel").options[1].text = words.on;
+    $("#extraSel").options[0].text = words.off;
+    $("#extraSel").options[1].text = words.on;
     $("#modeSel").querySelectorAll("option").forEach((option, i) => option.textContent = words.maps[i]);
     $("#deckTitle").textContent = `${state.side === "PLANT" ? words.plant : words.zombie} ${words.deckTitle}`;
     $("#cardTitle").textContent = words.cardTitle;
