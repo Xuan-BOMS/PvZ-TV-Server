@@ -58,11 +58,8 @@ body[data-theme="dark"] {
 .header-tools button:hover { background: #3e6745; }
 .header-tools #themeBtn { font-size: 19px; }
 .data-page { width: min(1360px, 100%); margin: 0 auto; padding: 15px 24px 12px; }
-.data-banner { min-height: 132px; display: grid; place-items: center; padding: 14px; border: 1px solid #bdb18e; background: #dce6cb; }
-.data-banner-board { min-width: min(100%, 540px); padding: 14px 34px 15px; border: 2px solid #4e351f; border-radius: 4px; color: #f8efda; background: repeating-linear-gradient(0deg, #895b31 0 16px, #80532e 17px 19px, #93643a 20px 28px); box-shadow: inset 0 0 0 3px #bd8b52, 0 4px 0 #543a24; text-align: center; }
-.data-banner .eyebrow { margin: 0 0 6px; color: #e5cf9c; font-size: 12px; font-weight: 700; }
+.data-banner { --banner-min-height: 132px; min-height: var(--banner-min-height); display: grid; place-items: center; padding: 14px; }
 .data-banner h1 { margin: 0; color: #fff6dc; font: bold 27px/1.2 Georgia, "Microsoft YaHei", serif; text-shadow: 0 2px #533820; }
-.data-banner-board > p:last-child { margin-top: 5px; color: #efe2c4; font-size: 12px; }
 .filter-bar { min-height: 64px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 12px 0; padding: 10px 13px; border: 1px solid #ccb98e; border-radius: 4px; background: #f2ead5; }
 body[data-theme="dark"] .filter-bar { border-color: var(--line); background: #303a30; }
 .filter-control { min-width: 135px; display: flex; align-items: center; gap: 7px; }
@@ -154,9 +151,7 @@ tbody tr:hover td:first-child { background: var(--leaf-soft); }
   .data-nav a { min-height: 42px; font-size: 12px; }
   .header-tools { grid-column: 2; grid-row: 1; }
   .data-page { padding: 10px 10px 7px; }
-  .data-banner { min-height: 108px; padding: 10px; }
-  .data-banner-board { min-width: min(100%, 430px); padding: 12px 10px; }
-  .data-banner .eyebrow { font-size: 12px; }
+  .data-banner { --banner-min-height: 108px; padding: 10px; }
   .data-banner h1 { font-size: 22px; }
   .filter-bar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 9px 0; padding: 9px; }
   .filter-control { min-width: 0; align-items: stretch; flex-direction: column; gap: 4px; }
@@ -196,6 +191,9 @@ tbody tr:hover td:first-child { background: var(--leaf-soft); }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 
-body:not([data-theme="dark"]) { background: #c49658 url("./ui/home-background.webp") center top / cover fixed no-repeat; }
-.data-banner { border: 0; background: transparent; }
-.data-banner-board { background: linear-gradient(#936439, #6b4225); }
+body:not([data-theme="dark"]) { --data-heading-y: max(7.8125vw, 13.8889svh); --data-background-offset: 0px; background: #c49658 url("./ui/home-background.webp") center var(--data-background-offset) / cover fixed no-repeat; }
+body:not([data-theme="dark"]) .data-banner { min-height: max(var(--banner-min-height), calc(var(--data-heading-y) + var(--data-background-offset) - 50px)); }
+body:not([data-theme="dark"]) .data-banner h1 { position: absolute; top: calc(var(--data-heading-y) + var(--data-background-offset)); left: 50%; transform: translate(-50%, -50%); }
+@media (max-width: 760px) and (orientation: portrait) {
+  body:not([data-theme="dark"]) { --data-background-offset: max(0px, calc(112px - var(--data-heading-y))); }
+}

@@ -14,8 +14,8 @@
   };
   const palette = ["#6b963c", "#d49931", "#7584ad", "#c45e35", "#42a09a", "#a1ad4c", "#aa7250", "#4d815d", "#cf8e51", "#8888a1"];
   const text = {
-    zh: { title:"PvZ TV 对战大数据", sub:"新对局数据自动更新", version:"游戏版本", all:"全部版本", ban:"禁选模式", extra:"额外卡槽", off:"关闭", on:"开启", map:"地图", maps:["白天","黑夜","泳池白天","泳池黑夜","屋顶"], plant:"植物", zombie:"僵尸", deckTitle:"Top 10 卡组", cardTitle:"单卡统计", recent:"最近对局", time:"时间", winner:"胜方", duration:"时长", card:"卡牌", pick:"选取", banCol:"禁用", wins:"胜场", winrate:"胜率", pickrate:"选取率", banrate:"禁用率", matches:"筛选对局", average:"Top 10 卡组平均胜率", core:"热门核心", noData:"暂无数据", waiting:"等待对局数据", summary:"统计来自已收录对局", records:"条卡牌记录", lineups:"组卡组", loading:"加载中…", returnHome:"返回资料站首页", allLabel:"总对局", latest:"近期", auto:"新对局数据自动更新" },
-    en: { title:"PvZ TV Battle Data", sub:"Live match data updates automatically", version:"Game version", all:"All versions", ban:"Ban mode", extra:"Extra slot", off:"Off", on:"On", map:"Map", maps:["Day","Night","Pool day","Pool fog","Roof"], plant:"Plants", zombie:"Zombies", deckTitle:"Top 10 Decks", cardTitle:"Card Stats", recent:"Recent Matches", time:"Time", winner:"Winner", duration:"Duration", card:"Card", pick:"Picked", banCol:"Banned", wins:"Wins", winrate:"Win rate", pickrate:"Pick rate", banrate:"Ban rate", matches:"Filtered matches", average:"Top 10 average win rate", core:"Popular core", noData:"No data", waiting:"Waiting for match data", summary:"Statistics from recorded matches", records:"card records", lineups:"deck lineups", loading:"Loading…", returnHome:"Back to home", allLabel:"Matches", latest:"LATEST", auto:"Live match data updates automatically" }
+    zh: { title:"对战大数据", version:"游戏版本", all:"全部版本", ban:"禁选模式", extra:"额外卡槽", off:"关闭", on:"开启", map:"地图", maps:["白天","黑夜","泳池白天","泳池黑夜","屋顶"], plant:"植物", zombie:"僵尸", deckTitle:"Top 10 卡组", cardTitle:"单卡统计", recent:"最近对局", time:"时间", winner:"胜方", duration:"时长", card:"卡牌", pick:"选取", banCol:"禁用", wins:"胜场", winrate:"胜率", pickrate:"选取率", banrate:"禁用率", matches:"筛选对局", average:"Top 10 卡组平均胜率", core:"热门核心", noData:"暂无数据", waiting:"等待对局数据", summary:"统计来自已收录对局", records:"条卡牌记录", lineups:"组卡组", loading:"加载中…", returnHome:"返回资料站首页", allLabel:"总对局", latest:"近期", auto:"新对局数据自动更新" },
+    en: { title:"Battle Data", version:"Game version", all:"All versions", ban:"Ban mode", extra:"Extra slot", off:"Off", on:"On", map:"Map", maps:["Day","Night","Pool day","Pool fog","Roof"], plant:"Plants", zombie:"Zombies", deckTitle:"Top 10 Decks", cardTitle:"Card Stats", recent:"Recent Matches", time:"Time", winner:"Winner", duration:"Duration", card:"Card", pick:"Picked", banCol:"Banned", wins:"Wins", winrate:"Win rate", pickrate:"Pick rate", banrate:"Ban rate", matches:"Filtered matches", average:"Top 10 average win rate", core:"Popular core", noData:"No data", waiting:"Waiting for match data", summary:"Statistics from recorded matches", records:"card records", lineups:"deck lineups", loading:"Loading…", returnHome:"Back to home", allLabel:"Matches", latest:"LATEST", auto:"Live match data updates automatically" }
   };
   const t = () => text[state.lang];
   const percent = value => `${(Number(value || 0) * 100).toFixed(1)}%`;
@@ -41,7 +41,6 @@
     document.documentElement.lang = state.lang === "zh" ? "zh-CN" : "en";
     document.title = words.title;
     $("#topTitle").textContent = words.title;
-    $("#subTitle").textContent = words.sub;
     $("#versionLabel").textContent = words.version;
     $("#banLabel").textContent = words.ban;
     $("#extraLabel").textContent = words.extra;
