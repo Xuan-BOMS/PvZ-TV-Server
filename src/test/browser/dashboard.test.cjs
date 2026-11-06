@@ -101,14 +101,14 @@ test('delayed first response paints the chart without resizing', { timeout: 1500
   assert.equal(await page.locator('.metric-row').count(), 0);
 });
 
-test('ranked decks show card art without the default producer', { timeout: 15000 }, async t => {
+test('ranked decks show card art without seed 0', { timeout: 15000 }, async t => {
   const { page } = await dashboard(t);
   await page.waitForSelector('#deckList .deck-row');
-  assert.deepEqual(await page.locator('.deck-row').first().locator('.deck-card').evaluateAll(images => images.map(image => image.alt)), ['豌豆射手', '樱桃炸弹', '坚果', '土豆地雷', '寒冰射手']);
+  assert.deepEqual(await page.locator('.deck-row').first().locator('.deck-card').evaluateAll(images => images.map(image => image.alt)), ['向日葵', '樱桃炸弹', '坚果', '土豆地雷', '寒冰射手']);
   assert.equal(await page.locator('.deck-row').first().locator('.deck-cards').textContent(), '');
   await page.waitForFunction(() => [...document.querySelectorAll('.deck-row:first-child .deck-card')].every(image => image.complete && image.naturalWidth > 0));
   const before = await page.locator('#pie').evaluate(canvas => canvas.toDataURL());
-  assert.equal(await page.locator('.deck-row').first().locator('.deck-card').first().getAttribute('src'), '/assets/cards/SEED_PACKET_00.webp?v=pvz-release-20261106-6');
+  assert.equal(await page.locator('.deck-row').first().locator('.deck-card').first().getAttribute('src'), '/assets/cards/SEED_PACKET_01.webp?v=pvz-release-20261106-7');
   await page.locator('.deck-row').first().focus();
   assert.notEqual(await page.locator('#pie').evaluate(canvas => canvas.toDataURL()), before);
   await page.locator('#versionSel').focus();
@@ -116,7 +116,7 @@ test('ranked decks show card art without the default producer', { timeout: 15000
   await page.click('#sideZombie');
   await page.waitForFunction(() => document.querySelector('.deck-card')?.alt === '普通僵尸');
   assert.equal(await page.locator('.deck-card[alt="墓碑"]').count(), 0);
-  assert.equal(await page.locator('.deck-row').first().locator('.deck-card').last().getAttribute('src'), '/assets/cards/SEED_PACKET_91_MOUND_LEVEL_0.webp?v=pvz-release-20261106-6');
+  assert.equal(await page.locator('.deck-row').first().locator('.deck-card').last().getAttribute('src'), '/assets/cards/SEED_PACKET_91_MOUND_LEVEL_0.webp?v=pvz-release-20261106-7');
   await page.waitForFunction(() => [...document.querySelectorAll('.deck-row:first-child .deck-card')].every(image => image.complete && image.naturalWidth > 0));
 });
 
@@ -182,13 +182,13 @@ test('filter changes, empty recovery, language and live updates redraw complete 
   await waitForDecks(page, 14);
 });
 
-test('day and night maps hide only their default producer and preserve statistics', { timeout: 30000 }, async t => {
+test('card art skips seed 0 on every map and preserves statistics', { timeout: 30000 }, async t => {
   const { page } = await dashboard(t, { mixedProducers: true, emptyMap: null });
   await waitForDecks(page, 114);
   const originalStats = await page.locator('.deck-meta').allTextContents();
-  for (const [map, retainedProducer] of [['NIGHT', '向日葵'], ['POOL', '阳光菇'], ['FOG', '向日葵'], ['DAY', '阳光菇']]) {
+  for (const map of ['NIGHT', 'POOL', 'FOG', 'DAY']) {
     await page.selectOption('#modeSel', map);
-    const expected = ['豌豆射手', retainedProducer, '樱桃炸弹', '坚果', '寒冰射手'];
+    const expected = ['向日葵', '阳光菇', '樱桃炸弹', '坚果', '寒冰射手'];
     await page.waitForFunction(expected => JSON.stringify([...document.querySelectorAll('.deck-row:first-child .deck-card')].map(image => image.alt)) === JSON.stringify(expected), expected);
     assert.deepEqual(await page.locator('.deck-meta').allTextContents(), originalStats);
     await waitForDecks(page, 114);
@@ -232,7 +232,7 @@ test('deck images and inline statistics fit desktop and mobile in both languages
     await page.setViewportSize({ width, height: 900 });
     for (let language = 0; language < 2; language++) {
       await page.click('#langBtn');
-      await page.waitForFunction(lang => document.documentElement.lang === lang && document.querySelector('.deck-card')?.alt === (lang === 'en' ? 'Peashooter' : '豌豆射手'), language === 0 ? 'en' : 'zh-CN');
+      await page.waitForFunction(lang => document.documentElement.lang === lang && document.querySelector('.deck-card')?.alt === (lang === 'en' ? 'Sunflower' : '向日葵'), language === 0 ? 'en' : 'zh-CN');
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `page overflow at ${width}`);
       assert(await page.locator('.deck-cards').evaluateAll(elements => elements.every(el => el.scrollWidth <= el.clientWidth)), `deck images clipped at ${width}`);
       assert(await page.locator('.deck-heading').evaluateAll(elements => elements.every(el => {

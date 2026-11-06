@@ -15,7 +15,7 @@
     request: 0
   };
   const palette = ["#6b963c", "#d49931", "#7584ad", "#c45e35", "#42a09a", "#a1ad4c", "#aa7250", "#4d815d", "#cf8e51", "#8888a1"];
-  const CARD_IMAGE_VERSION = "pvz-release-20261106-6";
+  const CARD_IMAGE_VERSION = "pvz-release-20261106-7";
   let deckImageObserver = null;
   let cardStatsImageObserver = null;
   const text = {
@@ -132,7 +132,7 @@
     content.classList.remove("is-empty");
     chart.hidden = false;
     deckImageObserver = createImageObserver(list);
-    const producerId = state.side === "ZOMBIE" ? 61 : ["NIGHT", "FOG"].includes(state.mode) ? 9 : 1;
+    const producerId = state.side === "ZOMBIE" ? 61 : 0;
     decks.forEach((deck, index) => {
       const row = document.createElement("li");
       row.className = "deck-row";
