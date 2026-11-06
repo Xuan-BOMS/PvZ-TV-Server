@@ -106,7 +106,7 @@ public class DashboardStaticResourcesTest {
 
     @Test
     public void versionedCardImagesUseImmutableCaching() throws Exception {
-        String path = "/assets/cards/SEED_PACKET_00.webp?v=pvz-release-20261106-5";
+        String path = "/assets/cards/SEED_PACKET_00.webp?v=pvz-release-20261106-6";
         HttpURLConnection image = request(path, null, null);
         assertEquals(200, image.getResponseCode());
         assertEquals("image/webp", image.getHeaderField("Content-Type"));

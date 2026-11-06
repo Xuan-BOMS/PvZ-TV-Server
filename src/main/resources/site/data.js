@@ -15,7 +15,7 @@
     request: 0
   };
   const palette = ["#6b963c", "#d49931", "#7584ad", "#c45e35", "#42a09a", "#a1ad4c", "#aa7250", "#4d815d", "#cf8e51", "#8888a1"];
-  const CARD_IMAGE_VERSION = "pvz-release-20261106-5";
+  const CARD_IMAGE_VERSION = "pvz-release-20261106-6";
   let deckImageObserver = null;
   let cardStatsImageObserver = null;
   const text = {

@@ -108,7 +108,7 @@ test('ranked decks show card art without the default producer', { timeout: 15000
   assert.equal(await page.locator('.deck-row').first().locator('.deck-cards').textContent(), '');
   await page.waitForFunction(() => [...document.querySelectorAll('.deck-row:first-child .deck-card')].every(image => image.complete && image.naturalWidth > 0));
   const before = await page.locator('#pie').evaluate(canvas => canvas.toDataURL());
-  assert.equal(await page.locator('.deck-row').first().locator('.deck-card').first().getAttribute('src'), '/assets/cards/SEED_PACKET_00.webp?v=pvz-release-20261106-5');
+  assert.equal(await page.locator('.deck-row').first().locator('.deck-card').first().getAttribute('src'), '/assets/cards/SEED_PACKET_00.webp?v=pvz-release-20261106-6');
   await page.locator('.deck-row').first().focus();
   assert.notEqual(await page.locator('#pie').evaluate(canvas => canvas.toDataURL()), before);
   await page.locator('#versionSel').focus();
@@ -116,7 +116,7 @@ test('ranked decks show card art without the default producer', { timeout: 15000
   await page.click('#sideZombie');
   await page.waitForFunction(() => document.querySelector('.deck-card')?.alt === '普通僵尸');
   assert.equal(await page.locator('.deck-card[alt="墓碑"]').count(), 0);
-  assert.equal(await page.locator('.deck-row').first().locator('.deck-card').last().getAttribute('src'), '/assets/cards/SEED_PACKET_91_MOUND_LEVEL_0.webp?v=pvz-release-20261106-5');
+  assert.equal(await page.locator('.deck-row').first().locator('.deck-card').last().getAttribute('src'), '/assets/cards/SEED_PACKET_91_MOUND_LEVEL_0.webp?v=pvz-release-20261106-6');
   await page.waitForFunction(() => [...document.querySelectorAll('.deck-row:first-child .deck-card')].every(image => image.complete && image.naturalWidth > 0));
 });
 
